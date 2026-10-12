@@ -25,7 +25,6 @@ def recalc ():
     totalapproved = sum(item[reqamount] for item in approval if item[apprstatus] and not item[reimstatus] and item[reimamount] == 0) #sum of approved items but NOT 
     estworking = curr - totalapproved-totalreim #updating
     
-
 while cont: #kinda excessive but its a little better than a bare while loop
 
     #prints out your stats and the keybinds
