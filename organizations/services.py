@@ -9,6 +9,3 @@ def get_role(user, org):
 def required_role(user, org, allowed_roles):
     if get_role(user,org) not in allowed_roles:
         raise PermissionDenied
-
-
-    
