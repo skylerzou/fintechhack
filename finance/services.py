@@ -5,7 +5,7 @@ from django.db.models.functions import Coalesce
 from organizations.models import Membership
 from organizations.services import required_role
 from django.db import transaction
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError,PermissionDenied
 
 
 COMMITTED_STATUSES = [SpendingReq.Status.APPROVED, SpendingReq.Status.SUBMITTED]
@@ -14,6 +14,7 @@ PERMISSIONS = {
     "request.submit": (R.MEMBER, R.PRESIDENT),
     "request.accept": (R.TREASURER),
     "request.complete": {R.TREASURER},
+    "view.requests.org": {R.TREASURER, R.PRESIDENT},
 
 }
 def approved_spend(org): #total of all approved spend or if its submitted then that amount
@@ -49,26 +50,29 @@ def true_bal(org):
             output_field=DecimalField(max_digits=10, decimal_places=2),
         )
     )["total"]
-)
+) #should probably think about who should be allowed to see this
 
 @transaction.atomic #makes sure the ledger and status change move together
-def complete_req(*, actor, request_id):
-    req = (SpendingReq.objects
-           .select_for_update(of=("self",)) #locks the row so one one can change it
+def request_complete(*, actor, request_id):
+    try: 
+        req = (SpendingReq.objects
+           .select_for_update(of=("self",)) #locks the row so no one can change it
            .select_related("organization")
            .get(pk = request_id))
-    
+    except SpendingReq.DoesNotExist:
+        raise PermissionDenied
+
     required_role(actor, req.organization, PERMISSIONS["request.complete"])
     if req.status != SpendingReq.Status.SUBMITTED:
         raise ValidationError("Only submitted requests can be completed")
-    if req.reimamount < 0:
-        raise ValidationError("Reimbursement amount must positive")
+    if req.reimamount <= 0:
+        raise ValidationError("Reimbursement amount must be positive")
     
     req.status = SpendingReq.Status.COMPLETED
     req.save(update_fields=["status"])
 
     #creates the ledger entry
-    entry = LedgerEntry.objects.create(
+    entry = LedgerEntry(
         organization = req.organization,
         done_by = actor,
         spending_req = req,
@@ -81,7 +85,7 @@ def complete_req(*, actor, request_id):
 
 
 @transaction.atomic
-def accept_req(*, actor, request_id):
+def request_accept(*, actor, request_id):
     req = (SpendingReq.objects
             .select_for_update(of=("self",))  #locks the row so one one can change it
             .select_related("organization")
@@ -89,14 +93,14 @@ def accept_req(*, actor, request_id):
     required_role(actor, req.organization, PERMISSIONS["request.accept"])
     if req.status != SpendingReq.Status.PENDING:
             raise ValidationError("Only pending requests can be accepted")
-    req.status = SpendingReq.Status.ACCEPTED
+    req.status = SpendingReq.Status.APPROVED
     req.save(update_fields=["status"])
     return req
 
 @transaction.atomic
 def request_spending(*, actor, org, name, spend):
     required_role(actor, org, PERMISSIONS["request.submit"])
-    entry = SpendingReq.objects.create(
+    entry = SpendingReq(
         organization = org,
         title = name,
         spend = spend,
@@ -105,3 +109,5 @@ def request_spending(*, actor, org, name, spend):
     entry.full_clean()
     entry.save()
     return entry
+
+#need to build view org requests, view personal requests, deny request
