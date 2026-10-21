@@ -5,6 +5,7 @@ from django.conf import settings
 
 class Organization(models.Model):
     name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique= True, blank = False)
 
 class Membership(models.Model):
     #again these are the choices for lower case role
