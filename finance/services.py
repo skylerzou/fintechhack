@@ -15,6 +15,8 @@ PERMISSIONS = {
     "request.accept": (R.TREASURER),
     "request.complete": {R.TREASURER},
     "view.requests.org": {R.TREASURER, R.PRESIDENT},
+    "view.requests.personal": {R.MEMBER, R.PRESIDENT},
+
 
 }
 def approved_spend(org): #total of all approved spend or if its submitted then that amount
@@ -50,7 +52,15 @@ def true_bal(org):
             output_field=DecimalField(max_digits=10, decimal_places=2),
         )
     )["total"]
-) #should probably think about who should be allowed to see this
+) 
+
+def org_fin_view(*, actor, org):
+    required_role(actor, org, PERMISSIONS["view.requests.org"])
+    real = true_bal(org)
+    pendreim = pending_reim(org)
+    approved = approved_spend(org)
+    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved}
+
 
 @transaction.atomic #makes sure the ledger and status change move together
 def request_complete(*, actor, request_id):
@@ -111,3 +121,18 @@ def request_spending(*, actor, org, name, spend):
     return entry
 
 #need to build view org requests, view personal requests, deny request
+
+def list_requests(*, actor, org, status):
+    required_role(actor, org, PERMISSIONS["view.requests.org"])       # enforcement, same as your services
+    spending_reqs = SpendingReq.objects.filter(organization=org)         # org scoping first, always
+    if status != "all":
+        spending_reqs = spending_reqs.filter(status=status)
+    return spending_reqs.select_related("requested_by").order_by("-created_at")
+
+def list_personal(*, actor, org, status):
+    required_role(actor, org, PERMISSIONS["view.requests.personal"])
+    spending_reqs = SpendingReq.objects.filter(requested_by = actor, organization = org)
+    if status != "all":
+        spending_reqs = spending_reqs.filter(status=status)
+    return spending_reqs.order_by("-created_at")
+    

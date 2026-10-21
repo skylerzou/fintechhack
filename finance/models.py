@@ -24,8 +24,9 @@ class SpendingReq(models.Model):
     status = models.CharField(max_length = 20, choices = Status.choices, default = Status.PENDING)
     reimamount = models.DecimalField(max_digits = 10,decimal_places=2, null=True, blank=True,validators=[MinValueValidator(Decimal("0.01"))])
     created_at = models.DateTimeField(auto_now_add = True)
+    
 
-    requestedby = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.PROTECT, related_name = "spending_request")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.PROTECT, related_name = "spending_request")
     #null = TRUE, blank = TRUE because the field is optional, null is spending request not approved yet, blank = true allows submission without the field filled out
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL,null=True, blank=True,  on_delete = models.PROTECT, related_name = "approved_spending_requests")
     completed_by= models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete = models.PROTECT, related_name = "completed_spending_requests")
