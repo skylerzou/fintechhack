@@ -14,9 +14,9 @@ PERMISSIONS = {
     "request.submit": (R.MEMBER, R.PRESIDENT),
     "request.accept": (R.TREASURER),
     "request.complete": {R.TREASURER},
+    "request.deny":{R.TREASURER},
     "view.requests.org": {R.TREASURER, R.PRESIDENT},
     "view.requests.personal": {R.MEMBER, R.PRESIDENT},
-
 
 }
 def approved_spend(org): #total of all approved spend or if its submitted then that amount
@@ -62,20 +62,19 @@ def org_fin_view(*, actor, org):
     return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved}
 
 
+#UPDATEDDDDDDD
 @transaction.atomic #makes sure the ledger and status change move together
-def request_complete(*, actor, request_id):
+def request_complete(*, actor, request_id, org):
+    required_role(actor, org, PERMISSIONS["request.complete"])
     try: 
         req = (SpendingReq.objects
            .select_for_update(of=("self",)) #locks the row so no one can change it
-           .select_related("organization")
-           .get(pk = request_id))
+           .get(pk = request_id, organization = org))
     except SpendingReq.DoesNotExist:
         raise PermissionDenied
-
-    required_role(actor, req.organization, PERMISSIONS["request.complete"])
     if req.status != SpendingReq.Status.SUBMITTED:
         raise ValidationError("Only submitted requests can be completed")
-    if req.reimamount <= 0:
+    if req.reimamount is None or req.reimamount <= 0:
         raise ValidationError("Reimbursement amount must be positive")
     
     req.status = SpendingReq.Status.COMPLETED
@@ -83,7 +82,7 @@ def request_complete(*, actor, request_id):
 
     #creates the ledger entry
     entry = LedgerEntry(
-        organization = req.organization,
+        organization = org,
         done_by = actor,
         spending_req = req,
         cost = -req.reimamount,
@@ -95,12 +94,14 @@ def request_complete(*, actor, request_id):
 
 
 @transaction.atomic
-def request_accept(*, actor, request_id):
-    req = (SpendingReq.objects
-            .select_for_update(of=("self",))  #locks the row so one one can change it
-            .select_related("organization")
-            .get(pk = request_id))
-    required_role(actor, req.organization, PERMISSIONS["request.accept"])
+def request_approve(*, actor, request_id, org):
+    required_role(actor, org, PERMISSIONS["request.accept"])
+    try:
+        req = (SpendingReq.objects
+                .select_for_update(of=("self",))  #locks the row so one one can change it
+                .get(pk = request_id, organization = org))
+    except SpendingReq.DoesNotExist:
+            raise PermissionDenied
     if req.status != SpendingReq.Status.PENDING:
             raise ValidationError("Only pending requests can be accepted")
     req.status = SpendingReq.Status.APPROVED
@@ -108,17 +109,54 @@ def request_accept(*, actor, request_id):
     return req
 
 @transaction.atomic
-def request_spending(*, actor, org, name, spend):
+def request_deny(*, actor, request_id, org):
+    required_role(actor, org, PERMISSIONS["request.deny"])
+    try:
+        req = (SpendingReq.objects
+                .select_for_update(of=("self",))  #locks the row so one one can change it
+                .get(pk = request_id, organization = org))
+    except SpendingReq.DoesNotExist:
+            raise PermissionDenied
+    if req.status != SpendingReq.Status.PENDING:
+            raise ValidationError("Only pending requests can be denied")
+    req.status = SpendingReq.Status.DENIED
+    req.save(update_fields=["status"])
+    return req
+
+@transaction.atomic
+def request_spending(*, actor, org, title, spend):
     required_role(actor, org, PERMISSIONS["request.submit"])
     entry = SpendingReq(
         organization = org,
-        title = name,
+        title = title,
         spend = spend,
-        requestedby = actor,
+        requested_by = actor,
     )
     entry.full_clean()
     entry.save()
     return entry
+
+
+@transaction.atomic
+def request_reim(*, actor, request_id, org, reimamount):
+    # TODO: overspend limit check
+    required_role(actor, org, PERMISSIONS["request.submit"])
+    try:
+        req = (SpendingReq.objects
+                .select_for_update(of=("self",))  #locks the row so one one can change it
+                .get(pk = request_id, requested_by=actor, organization = org))
+    except SpendingReq.DoesNotExist:
+            raise PermissionDenied
+    if req.status == SpendingReq.Status.SUBMITTED or req.status == SpendingReq.Status.COMPLETED:
+                raise ValidationError("Already submitted or completed")
+    if req.status != SpendingReq.Status.APPROVED:
+            raise ValidationError("Only approved requests can submit for reimbursement")
+    if reimamount is None or reimamount <= 0:
+            raise ValidationError("Reimbursement amount must be positive")
+    req.status = SpendingReq.Status.SUBMITTED
+    req.reimamount = reimamount
+    req.save(update_fields=["status", "reimamount"])
+    return req
 
 #need to build view org requests, view personal requests, deny request
 
@@ -134,5 +172,7 @@ def list_personal(*, actor, org, status):
     spending_reqs = SpendingReq.objects.filter(requested_by = actor, organization = org)
     if status != "all":
         spending_reqs = spending_reqs.filter(status=status)
-    return spending_reqs.order_by("-created_at")
+    pending_count = SpendingReq.objects.filter(requested_by = actor, organization=org, status=SpendingReq.Status.PENDING).count()
+    submitted_count = SpendingReq.objects.filter(requested_by = actor, organization=org, status=SpendingReq.Status.SUBMITTED).count()
+    return {"spending_reqs" :spending_reqs.order_by("-created_at"), "pending_count": pending_count, "submitted_count": submitted_count}
     
