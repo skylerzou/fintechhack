@@ -1,0 +1,10 @@
+# library/forms.py
+from decimal import Decimal
+from django import forms
+
+class SpendingRequestForm(forms.Form):
+    title = forms.CharField(max_length=200)
+    spend = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
+
+class SpendingRequestReimForm(forms.Form):
+    reimamount = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))

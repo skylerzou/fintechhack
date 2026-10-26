@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from organizations.services import required_role
-from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_accept, request_deny
+from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request
 from finance.models import SpendingReq
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from django.core.exceptions import ValidationError,PermissionDenied
 from django.contrib import messages
+from finance.forms import SpendingRequestForm, SpendingRequestReimForm
+
 # Create your views here.
 
 # library/views.py
@@ -42,7 +44,7 @@ def request_complete_view(request, organization_slug, request_id):
 @require_POST
 def request_approve_view(request, organization_slug, request_id):
     try:
-        request_accept(actor = request.user, request_id = request_id, org = request.org)
+        request_approve(actor = request.user, request_id = request_id, org = request.org)
     except ValidationError as e:
         messages.error(request, e.messages[0])
     else:
@@ -75,6 +77,38 @@ def request_list_personal(request, organization_slug):
         "pending_count": pending,
         "waiting_reim_count": submitted,
     })  
+
+def spending_request_new(request, organization_slug):
+    if request.method == "POST":
+        form = SpendingRequestForm(request.POST)
+        if form.is_valid():
+            try:
+                request_spending(actor = request.user, org = request.org, title=form.cleaned_data["title"], spend = form.cleaned_data["spend"])
+            except ValidationError as e:
+                form.add_error(None, e.messages[0])
+            else:
+                messages.success(request, "Request Submitted")
+                return redirect("request-list-mine", organization_slug= organization_slug)
+    else:
+        #its GET
+        form = SpendingRequestForm()
+    return render(request, "finance/spending_new.html", {"form": form})
+
+def spending_request_reim(request, request_id, organization_slug):
+    req = get_own_request(actor = request.user, org = request.org, request_id = request_id)
+    if request.method == "POST":
+        form = SpendingRequestReimForm(request.POST)
+        if form.is_valid():
+            try:
+                request_reim(actor = request.user, org = request.org, request_id= request_id, reimamount = form.cleaned_data["reimamount"])
+            except ValidationError as e:
+                form.add_error(None, e.messages[0])
+            else:
+                messages.success(request, "Reimbursement Request Submitted")
+                return redirect("request-list-mine", organization_slug= organization_slug)
+    else:
+        form = SpendingRequestReimForm()
+    return render(request, "finance/reim_new.html", {"form" : form, "req" : req})
 
 def org_overview(request, organization_slug):
     return render(request, "finance/overview.html", org_fin_view(actor = request.user, org = request.org))

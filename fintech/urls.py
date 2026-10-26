@@ -18,8 +18,9 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("admin/", admin.site.urls),
+    path("accounts/", include("users.urls")),                         # signup (+ custom login, below)
+    path("accounts/", include("django.contrib.auth.urls")),           # Django's login, logout, etc.
+    path("", include("organizations.urls")),                          # org picker, create org
     path("orgs/<slug:organization_slug>/", include("finance.urls")),
-    
 ]

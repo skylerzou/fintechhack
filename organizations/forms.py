@@ -1,9 +1,5 @@
 from django import forms
 from .models import Reservation
 
-class ReservationForm(forms.ModelForm):
-    #meta properties
-    class Meta:
-        model = Reservation
-        fields = '__all__'
-        
+class OrgCreationForm(forms.Form):
+    name = forms.CharField(max_length=200)

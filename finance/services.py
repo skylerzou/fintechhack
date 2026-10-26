@@ -1,22 +1,23 @@
 from decimal import Decimal
 from django.db.models import Sum, When, F, Case, DecimalField
-from .models import SpendingReq, LedgerEntry
+from finance.models import SpendingReq, LedgerEntry
 from django.db.models.functions import Coalesce
 from organizations.models import Membership
 from organizations.services import required_role
 from django.db import transaction
 from django.core.exceptions import ValidationError,PermissionDenied
+from django.utils import timezone
 
 
 COMMITTED_STATUSES = [SpendingReq.Status.APPROVED, SpendingReq.Status.SUBMITTED]
 R = Membership.Role
 PERMISSIONS = {
-    "request.submit": (R.MEMBER, R.PRESIDENT),
+    "request.submit": (R.MEMBER, R.TREASURER, R.PRESIDENT),
     "request.accept": (R.TREASURER),
     "request.complete": {R.TREASURER},
     "request.deny":{R.TREASURER},
     "view.requests.org": {R.TREASURER, R.PRESIDENT},
-    "view.requests.personal": {R.MEMBER, R.PRESIDENT},
+    "view.requests.personal": {R.MEMBER, R.TREASURERR.PRESIDENT},
 
 }
 def approved_spend(org): #total of all approved spend or if its submitted then that amount
@@ -78,7 +79,9 @@ def request_complete(*, actor, request_id, org):
         raise ValidationError("Reimbursement amount must be positive")
     
     req.status = SpendingReq.Status.COMPLETED
-    req.save(update_fields=["status"])
+    req.completed_at = timezone.now()
+    req.completed_by = actor
+    req.save(update_fields=["status", "completed_at", "completed_by"])
 
     #creates the ledger entry
     entry = LedgerEntry(
@@ -105,7 +108,9 @@ def request_approve(*, actor, request_id, org):
     if req.status != SpendingReq.Status.PENDING:
             raise ValidationError("Only pending requests can be accepted")
     req.status = SpendingReq.Status.APPROVED
-    req.save(update_fields=["status"])
+    req.reviewed_by = actor
+    req.reviewed_at = timezone.now()
+    req.save(update_fields=["status", "reviewed_by", "reviewed_at"])
     return req
 
 @transaction.atomic
@@ -120,7 +125,9 @@ def request_deny(*, actor, request_id, org):
     if req.status != SpendingReq.Status.PENDING:
             raise ValidationError("Only pending requests can be denied")
     req.status = SpendingReq.Status.DENIED
-    req.save(update_fields=["status"])
+    req.reviewed_by = actor
+    req.reviewed_at = timezone.now()
+    req.save(update_fields=["status", "reviewed_by" , "reviewed_at"])
     return req
 
 @transaction.atomic
@@ -158,6 +165,14 @@ def request_reim(*, actor, request_id, org, reimamount):
     req.save(update_fields=["status", "reimamount"])
     return req
 
+def get_own_request(*, actor, org, request_id):
+    required_role(actor, org, PERMISSIONS["view.requests.personal"])
+    try:
+        spending_req = SpendingReq.objects.get(requested_by = actor, organization = org, pk = request_id)
+    except SpendingReq.DoesNotExist:
+            raise PermissionDenied
+    return spending_req
+
 #need to build view org requests, view personal requests, deny request
 
 def list_requests(*, actor, org, status):
@@ -175,4 +190,6 @@ def list_personal(*, actor, org, status):
     pending_count = SpendingReq.objects.filter(requested_by = actor, organization=org, status=SpendingReq.Status.PENDING).count()
     submitted_count = SpendingReq.objects.filter(requested_by = actor, organization=org, status=SpendingReq.Status.SUBMITTED).count()
     return {"spending_reqs" :spending_reqs.order_by("-created_at"), "pending_count": pending_count, "submitted_count": submitted_count}
+
+
     
