@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Join an organization #}
+{# No action attribute on purpose: the form posts back to /join/ or /join/<code>/, whichever is open. #}
+{% block title %}Join an organization{% endblock %}
+{% block content %}
+  <h1>Join an organization</h1>
+  <p>Enter the 8-character code from your organization's president.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Join</button>
+  </form>
+{% endblock %}

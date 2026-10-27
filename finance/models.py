@@ -23,6 +23,7 @@ class SpendingReq(models.Model):
     spend = models.DecimalField(max_digits = 10,decimal_places=2,validators=[MinValueValidator(Decimal("0.01"))])
     status = models.CharField(max_length = 20, choices = Status.choices, default = Status.PENDING)
     reimamount = models.DecimalField(max_digits = 10,decimal_places=2, null=True, blank=True,validators=[MinValueValidator(Decimal("0.01"))])
+    over_budget = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add = True)
     reviewed_at = models.DateTimeField(null = True, blank = True)

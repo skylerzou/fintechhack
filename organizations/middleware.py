@@ -1,5 +1,4 @@
 from django.contrib.auth.views import redirect_to_login
-from services import get_role
 from organizations.models import Membership
 from django.http import Http404
 

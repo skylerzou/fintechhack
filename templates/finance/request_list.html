@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > All requests #}
+{% block title %}All requests{% endblock %}
+{% block content %}
+  <h1>All requests</h1>
+  <p>Awaiting review: {{ pending_count }}</p>
+  <p>Waiting to be paid out: {{ submitted_count }}</p>
+
+  <form method="get">
+    <label for="status">Show</label>
+    <select name="status" id="status">
+      <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
+      <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Awaiting Review</option>
+      <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Request Approved</option>
+      <option value="denied" {% if status_filter == "denied" %}selected{% endif %}>Request Denied</option>
+      <option value="submitted" {% if status_filter == "submitted" %}selected{% endif %}>Reimbursement Submitted</option>
+      <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed Request</option>
+    </select>
+    <button type="submit">Filter</button>
+  </form>
+
+  {% if spending_reqs %}
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Requested by</th><th>Approved amount</th><th>Reimbursement</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for r in spending_reqs %}
+          <tr>
+            <td>{{ r.title }}</td>
+            <td>{{ r.requested_by.get_full_name|default:r.requested_by.username }}</td>
+            <td>${{ r.spend|floatformat:2 }}</td>
+            <td>{% if r.reimamount is not None %}${{ r.reimamount|floatformat:2 }}{% else %}&mdash;{% endif %}</td>
+            <td>
+              {{ r.get_status_display }}
+              {% if r.over_budget %}<strong>Over budget</strong>{% endif %}
+            </td>
+            <td>{{ r.created_at|date:"M j, Y" }}</td>
+            <td>
+              {% if r.status == "pending" %}
+                <form method="post" action="{% url 'request-approve' organization_slug=current_org.slug request_id=r.id %}">
+                  {% csrf_token %}
+                  <button type="submit">Approve</button>
+                </form>
+                <form method="post" action="{% url 'request-deny' organization_slug=current_org.slug request_id=r.id %}">
+                  {% csrf_token %}
+                  <button type="submit">Deny</button>
+                </form>
+              {% elif r.status == "submitted" %}
+                <form method="post" action="{% url 'request-complete' organization_slug=current_org.slug request_id=r.id %}">
+                  {% csrf_token %}
+                  <button type="submit">Complete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No requests match this filter.</p>
+  {% endif %}
+{% endblock %}

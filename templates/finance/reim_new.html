@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Request reimbursement #}
+{% block title %}Request reimbursement{% endblock %}
+{% block content %}
+  <h1>Request reimbursement</h1>
+  <p>Request: {{ req.title }}</p>
+  <p>Approved amount: ${{ req.spend|floatformat:2 }}</p>
+  <p>Status: {{ req.get_status_display }}</p>
+
+  {% if req.status == "approved" %}
+    <p>Amounts above the approved amount plus your organization's overspend limit are allowed, but flagged for the treasurer.</p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Request reimbursement</button>
+    </form>
+  {% else %}
+    <p>Only approved requests can be reimbursed.</p>
+  {% endif %}
+  <p><a href="{% url 'request-list-mine' organization_slug=current_org.slug %}">Back to my requests</a></p>
+{% endblock %}

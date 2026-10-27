@@ -8,3 +8,7 @@ class SpendingRequestForm(forms.Form):
 
 class SpendingRequestReimForm(forms.Form):
     reimamount = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
+
+class BalAdjustmentForm(forms.Form):
+    title = forms.CharField(max_length = 200)
+    adjustment = forms.DecimalField(max_digits = 10, decimal_places= 2)

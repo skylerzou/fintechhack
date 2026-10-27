@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > New spending request #}
+{% block title %}New spending request{% endblock %}
+{% block content %}
+  <h1>New spending request</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Create request</button>
+  </form>
+  <p><a href="{% url 'request-list-mine' organization_slug=current_org.slug %}">Back to my requests</a></p>
+{% endblock %}

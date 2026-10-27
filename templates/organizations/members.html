@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Members #}
+{% block title %}Members{% endblock %}
+{% block content %}
+  <h1>Members of {{ current_org.name }}</h1>
+
+  <section>
+    <h2>Invite people</h2>
+    <p>Join code: <strong>{{ join_code }}</strong></p>
+    <p>Join link: {{ request.scheme }}://{{ request.get_host }}{% url 'join-code' code=join_code %}</p>
+    <form method="post" action="{% url 'regen-code' organization_slug=current_org.slug %}">
+      {% csrf_token %}
+      <button type="submit">Generate a new code</button>
+    </form>
+    <p>A new code makes the current code and link stop working.</p>
+  </section>
+
+  <section>
+    <h2>Board</h2>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Change role</th></tr>
+      </thead>
+      <tbody>
+        {% for m in memberships %}
+          <tr>
+            <td>{{ m.user.get_full_name|default:m.user.username }}</td>
+            <td>{{ m.user.email }}</td>
+            <td>{{ m.get_role_display }}</td>
+            <td>
+              {% if m.role != "president" %}
+                <form method="post" action="{% url 'member-change-role' organization_slug=current_org.slug membership_id=m.id %}">
+                  {% csrf_token %}
+                  <select name="role">
+                    <option value="member" {% if m.role == "member" %}selected{% endif %}>Member</option>
+                    <option value="treasurer" {% if m.role == "treasurer" %}selected{% endif %}>Treasurer</option>
+                  </select>
+                  <button type="submit">Change</button>
+                </form>
+              {% else %}
+                &mdash;
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

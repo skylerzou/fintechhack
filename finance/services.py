@@ -2,24 +2,16 @@ from decimal import Decimal
 from django.db.models import Sum, When, F, Case, DecimalField
 from finance.models import SpendingReq, LedgerEntry
 from django.db.models.functions import Coalesce
-from organizations.models import Membership
+from organizations.models import Membership, Organization
 from organizations.services import required_role
 from django.db import transaction
 from django.core.exceptions import ValidationError,PermissionDenied
 from django.utils import timezone
+from organizations.services import PERMISSIONS
 
 
 COMMITTED_STATUSES = [SpendingReq.Status.APPROVED, SpendingReq.Status.SUBMITTED]
-R = Membership.Role
-PERMISSIONS = {
-    "request.submit": (R.MEMBER, R.TREASURER, R.PRESIDENT),
-    "request.accept": (R.TREASURER),
-    "request.complete": {R.TREASURER},
-    "request.deny":{R.TREASURER},
-    "view.requests.org": {R.TREASURER, R.PRESIDENT},
-    "view.requests.personal": {R.MEMBER, R.TREASURERR.PRESIDENT},
 
-}
 def approved_spend(org): #total of all approved spend or if its submitted then that amount
     commited = Case(
         #when is like a if statement
@@ -62,6 +54,20 @@ def org_fin_view(*, actor, org):
     approved = approved_spend(org)
     return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved}
 
+@transaction.atomic
+def bal_adjustment(*, actor, org, adjustment, title):
+    required_role(actor, org, PERMISSIONS["bal.adjustment"])
+    if adjustment == 0:
+        raise ValidationError("Adjustment cannot be 0") 
+    entry = LedgerEntry(
+            organization = org,
+            done_by = actor,
+            cost = adjustment,
+            title = title,
+        )
+    entry.full_clean()
+    entry.save()
+    return entry
 
 #UPDATEDDDDDDD
 @transaction.atomic #makes sure the ledger and status change move together
@@ -146,7 +152,6 @@ def request_spending(*, actor, org, title, spend):
 
 @transaction.atomic
 def request_reim(*, actor, request_id, org, reimamount):
-    # TODO: overspend limit check
     required_role(actor, org, PERMISSIONS["request.submit"])
     try:
         req = (SpendingReq.objects
@@ -160,9 +165,11 @@ def request_reim(*, actor, request_id, org, reimamount):
             raise ValidationError("Only approved requests can submit for reimbursement")
     if reimamount is None or reimamount <= 0:
             raise ValidationError("Reimbursement amount must be positive")
+    
+    req.over_budget = reimamount > req.spend + org.overspend_limit
     req.status = SpendingReq.Status.SUBMITTED
     req.reimamount = reimamount
-    req.save(update_fields=["status", "reimamount"])
+    req.save(update_fields=["status", "reimamount", "over_budget"])
     return req
 
 def get_own_request(*, actor, org, request_id):

@@ -1,1 +1,61 @@
-<!-- This is holds CSS links, navbar -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} | Site Name</title>
+  {# STUB: replace with the real layout. Contract: base.html #}
+  {# Shared CSS goes here, OUTSIDE the block below. #}
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    {% if user.is_authenticated %}
+      <p>Signed in as {{ user.get_full_name|default:user.username }}</p>
+      <nav>
+        <a href="{% url 'org-picker' %}">Your orgs</a>
+        <a href="{% url 'join' %}">Join an org</a>
+        <a href="{% url 'org-create' %}">Create an org</a>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit">Log out</button>
+        </form>
+      </nav>
+      {% if current_org %}
+        <nav>
+          <strong>{{ current_org.name }}</strong>
+          <a href="{% url 'request-list-mine' organization_slug=current_org.slug %}">My requests</a>
+          <a href="{% url 'request-create' organization_slug=current_org.slug %}">New request</a>
+          {% if current_role == "treasurer" or current_role == "president" %}
+            <a href="{% url 'request-list' organization_slug=current_org.slug %}">All requests</a>
+            <a href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Overview</a>
+          {% endif %}
+          {% if current_role == "president" %}
+            <a href="{% url 'member-list' organization_slug=current_org.slug %}">Members</a>
+          {% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <nav>
+        <a href="{% url 'login' %}">Log in</a>
+        <a href="{% url 'signup' %}">Sign up</a>
+      </nav>
+    {% endif %}
+  </header>
+
+  {% if messages %}
+    <ul>
+      {% for message in messages %}
+        <li class="message-{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {# Shared JS goes here, OUTSIDE the block below. #}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

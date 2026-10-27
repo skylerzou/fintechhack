@@ -10,5 +10,6 @@ urlpatterns = [
     path('requests/<int:request_id>/deny/', views.request_deny_view, name =  'request-deny'),
     path('requests/<int:request_id>/complete/', views.request_complete_view, name = 'request-complete'),
     path('requests/<int:request_id>/reimburse/', views.spending_request_reim, name = 'request-reim'),
-    path('requests/mine/create/', views.spending_request_new, name = 'request-create')
+    path('requests/mine/create/', views.spending_request_new, name = 'request-create'),
+    path('overview/bal-adjustment/', views.bal_adjustment_view, name = 'bal-adjustment')
 ]

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Org picker #}
+{% block title %}Your organizations{% endblock %}
+{% block content %}
+  <h1>Your organizations</h1>
+  {% if memberships %}
+    <ul>
+      {% for m in memberships %}
+        <li>
+          {% if m.role == "president" %}
+            <a href="{% url 'org-fin-overview' organization_slug=m.organization.slug %}">{{ m.organization.name }}</a>
+          {% elif m.role == "treasurer" %}
+            <a href="{% url 'request-list' organization_slug=m.organization.slug %}">{{ m.organization.name }}</a>
+          {% else %}
+            <a href="{% url 'request-list-mine' organization_slug=m.organization.slug %}">{{ m.organization.name }}</a>
+          {% endif %}
+          ({{ m.get_role_display }})
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You're not in any organizations yet. Create one, or join one with a code from its president.</p>
+  {% endif %}
+  <p><a href="{% url 'org-create' %}">Create an organization</a></p>
+  <p><a href="{% url 'join' %}">Join with a code</a></p>
+{% endblock %}

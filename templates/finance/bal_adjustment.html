@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Balance adjustment #}
+{% block title %}Record dues or a correction{% endblock %}
+{% block content %}
+  <h1>Record dues or a correction</h1>
+  <p>Enter a positive amount for money coming in, or a negative amount for money going out. Entries can't be edited later, so fix a mistake by recording the opposite amount.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Record entry</button>
+  </form>
+  <p><a href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Back to overview</a></p>
+{% endblock %}

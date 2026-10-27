@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Create an organization #}
+{% block title %}Create an organization{% endblock %}
+{% block content %}
+  <h1>Create an organization</h1>
+  <p>You'll be its president.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Create organization</button>
+  </form>
+{% endblock %}

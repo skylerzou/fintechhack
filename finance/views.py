@@ -1,16 +1,15 @@
 from django.shortcuts import render
 from organizations.services import required_role
-from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request
-from finance.models import SpendingReq
+from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from django.core.exceptions import ValidationError,PermissionDenied
 from django.contrib import messages
-from finance.forms import SpendingRequestForm, SpendingRequestReimForm
+from finance.forms import SpendingRequestForm, SpendingRequestReimForm, BalAdjustmentForm
+from finance.models import SpendingReq
 
 # Create your views here.
 
-# library/views.py
 VALID_STATUSES = {"all", *SpendingReq.Status.values}   # built from the model's own choices
 
 def request_list(request, organization_slug):           # Django passes the slug; the middleware already used it
@@ -112,3 +111,18 @@ def spending_request_reim(request, request_id, organization_slug):
 
 def org_overview(request, organization_slug):
     return render(request, "finance/overview.html", org_fin_view(actor = request.user, org = request.org))
+
+def bal_adjustment_view(request, organization_slug):
+    if request.method == "POST":
+        form = BalAdjustmentForm(request.POST)
+        if form.is_valid():
+            try:
+                bal_adjustment(actor = request.user, org = request.org, adjustment =form.cleaned_data["adjustment"], title =form.cleaned_data["title"])
+            except ValidationError as e:
+                form.add_error(None, e.messages[0])
+            else:
+                messages.success(request, "Balance Adjusted")
+                return redirect('org-fin-overview', organization_slug = organization_slug)
+    else:
+        form = BalAdjustmentForm()
+    return render(request, "finance/bal_adjustment.html", {"form" : form})

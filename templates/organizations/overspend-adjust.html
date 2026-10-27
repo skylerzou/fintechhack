@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Overspend limit #}
+{% block title %}Overspend limit{% endblock %}
+{% block content %}
+  <h1>Overspend limit</h1>
+  <p>Reimbursements more than this many dollars above the approved amount are flagged "Over budget" for review. They are not blocked.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save limit</button>
+  </form>
+  <p><a href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Back to overview</a></p>
+{% endblock %}

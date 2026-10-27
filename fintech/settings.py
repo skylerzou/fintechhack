@@ -12,16 +12,23 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
+import os
+from dotenv import load_dotenv
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+load_dotenv(BASE_DIR / ".env")
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=+ebp+7xh=jubrd6*wx^nazee@edq^9ecsm80^f5-g%qx*hi$h'
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -60,14 +67,15 @@ ROOT_URLCONF = 'fintech.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        "DIRS": [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'organizations.context_processor.current_org'
+                'organizations.context_processor.current_org',
+                'organizations.context_processor.current_role',
             ],
         },
     },
@@ -140,5 +148,5 @@ MAILERS = {
 #AUTH
 
 LOGIN_REDIRECT_URL = 'org-picker'
+LOGOUT_REDIRECT_URL = 'login'
 
-LOGOUT_REDIRECT_URL= 'log-in'

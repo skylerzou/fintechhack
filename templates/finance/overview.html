@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{# STUB: replace with the real page. Contract: Pages > Overview #}
+{% block title %}Overview{% endblock %}
+{% block content %}
+  <h1>{{ current_org.name }} overview</h1>
+  <dl>
+    <dt>Balance</dt>
+    <dd>{% if true_balance < 0 %}-${{ true_balance|floatformat:2|cut:"-" }}{% else %}${{ true_balance|floatformat:2 }}{% endif %}</dd>
+    <dt>Reimbursements waiting to be paid</dt>
+    <dd>${{ pending_reim|floatformat:2 }}</dd>
+    <dt>Approved, not yet reimbursed</dt>
+    <dd>${{ curr_approved|floatformat:2 }}</dd>
+    <dt>Overspend limit</dt>
+    <dd>${{ current_org.overspend_limit|floatformat:2 }}</dd>
+  </dl>
+  <ul>
+    <li><a href="{% url 'request-list' organization_slug=current_org.slug %}">All requests</a></li>
+    <li><a href="{% url 'bal-adjustment' organization_slug=current_org.slug %}">Record dues or a correction</a></li>
+    <li><a href="{% url 'overspend-adjust' organization_slug=current_org.slug %}">Change the overspend limit</a></li>
+  </ul>
+{% endblock %}
