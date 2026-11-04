@@ -1,49 +1,253 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Members #}
+
 {% block title %}Members{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ============================================================
+   MEMBERS — page-only styling (adds to the shared CSS)
+   ============================================================ */
+
+.members-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* --- Join code card --- */
+.code-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.code-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  opacity: .8;
+}
+
+.code-value {
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  color: var(--type-primary);
+  margin-top: 4px;
+}
+
+.code-link {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--surface-border);
+}
+
+.code-link__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  word-break: break-all;
+  padding: 9px 12px;
+  border: 1px solid var(--surface-border);
+  background: var(--page-bg);
+}
+
+.code-note {
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #F59E0B;
+  color: var(--type-primary);
+}
+
+/* --- Members table --- */
+.table-wrap { overflow-x: auto; }
+
+table.members {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+table.members th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  opacity: .85;
+  padding: 0 14px 10px;
+  border-bottom: 1px solid var(--surface-border);
+  white-space: nowrap;
+}
+
+table.members td {
+  padding: 14px;
+  border-bottom: 1px solid var(--surface-border);
+  vertical-align: middle;
+}
+
+table.members tr:last-child td { border-bottom: 0; }
+
+.person__name { font-weight: 600; color: var(--type-primary); }
+.person__email { font-size: 12.5px; color: var(--type-secondary); opacity: .9; }
+
+.role-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 0;                 /* square corners */
+  border: 1.5px solid var(--btn2-border);
+  color: var(--btn2-text);
+  white-space: nowrap;
+}
+.role-chip--president {
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  border-color: var(--cta-bg);
+}
+
+/* --- Inline role form --- */
+.role-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.role-select {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--page-bg);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;                 /* square corners */
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: border-color .18s ease;
+}
+.role-select:hover { border-color: var(--accent-line); }
+
+.btn--sm { font-size: 12px; padding: 7px 13px; }
+
+.no-action {
+  font-size: 12.5px;
+  color: var(--type-secondary);
+  opacity: .75;
+}
+
+@media (max-width: 720px) {
+  .code-value { font-size: 21px; letter-spacing: .16em; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>Members of {{ current_org.name }}</h1>
 
-  <section>
-    <h2>Invite people</h2>
-    <p>Join code: <strong>{{ join_code }}</strong></p>
-    <p>Join link: {{ request.scheme }}://{{ request.get_host }}{% url 'join-code' code=join_code %}</p>
-    <form method="post" action="{% url 'regen-code' organization_slug=current_org.slug %}">
-      {% csrf_token %}
-      <button type="submit">Generate a new code</button>
-    </form>
-    <p>A new code makes the current code and link stop working.</p>
+<div class="page__header">
+  <h1 class="page__title">Members</h1>
+  <p class="page__description">
+    Everyone on {{ current_org.name }}'s executive board, and the code people use to join.
+  </p>
+</div>
+
+<div class="members-layout">
+
+  <!-- ===================== JOIN CODE ===================== -->
+  <section class="card code-card">
+    <div class="code-card__top">
+      <div>
+        <div class="code-label">Current join code</div>
+        <div class="code-value">{{ join_code }}</div>
+      </div>
+
+      <!-- Action: generate a new join code -->
+      <form method="post" action="{% url 'regen-code' organization_slug=current_org.slug %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--secondary">Generate a new code</button>
+      </form>
+    </div>
+
+    <div class="code-link">
+      <span class="code-label">Join link</span>
+      <span class="code-link__value">{{ request.scheme }}://{{ request.get_host }}{% url 'join-code' code=join_code %}</span>
+    </div>
+
+    <p class="code-note">
+      Generating a new code immediately stops the current code and join link from working.
+      Anyone still holding the old one will need the new code.
+    </p>
   </section>
 
-  <section>
-    <h2>Board</h2>
-    <table>
-      <thead>
-        <tr><th>Name</th><th>Email</th><th>Role</th><th>Change role</th></tr>
-      </thead>
-      <tbody>
-        {% for m in memberships %}
+  <!-- ===================== MEMBER LIST ===================== -->
+  <section class="card">
+    <h2 class="card__title">Executive board</h2>
+
+    <div class="table-wrap" style="margin-top:16px;">
+      <table class="members">
+        <thead>
           <tr>
-            <td>{{ m.user.get_full_name|default:m.user.username }}</td>
-            <td>{{ m.user.email }}</td>
-            <td>{{ m.get_role_display }}</td>
-            <td>
-              {% if m.role != "president" %}
-                <form method="post" action="{% url 'member-change-role' organization_slug=current_org.slug membership_id=m.id %}">
-                  {% csrf_token %}
-                  <select name="role">
-                    <option value="member" {% if m.role == "member" %}selected{% endif %}>Member</option>
-                    <option value="treasurer" {% if m.role == "treasurer" %}selected{% endif %}>Treasurer</option>
-                  </select>
-                  <button type="submit">Change</button>
-                </form>
-              {% else %}
-                &mdash;
-              {% endif %}
-            </td>
+            <th scope="col">Member</th>
+            <th scope="col">Role</th>
+            <th scope="col">Change role</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for m in memberships %}
+            <tr>
+              <td>
+                <div class="person__name">{{ m.user.get_full_name|default:m.user.username }}</div>
+                <div class="person__email">{{ m.user.email }}</div>
+              </td>
+
+              <td>
+                <span class="role-chip {% if m.role == 'president' %}role-chip--president{% endif %}">{{ m.get_role_display }}</span>
+              </td>
+
+              <td>
+                {% if m.role == 'president' %}
+                  <span class="no-action">&mdash;</span>
+                {% else %}
+                  <!-- Action: change this member's role -->
+                  <form class="role-form" method="post" action="{% url 'member-change-role' organization_slug=current_org.slug membership_id=m.id %}">
+                    {% csrf_token %}
+                    <label class="code-label" for="role-{{ m.id }}" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Role</label>
+                    <select class="role-select" id="role-{{ m.id }}" name="role">
+                      <option value="member" {% if m.role == 'member' %}selected{% endif %}>Member</option>
+                      <option value="treasurer" {% if m.role == 'treasurer' %}selected{% endif %}>Treasurer</option>
+                    </select>
+                    <button type="submit" class="btn btn--primary btn--sm">Save</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="3" class="no-action">
+                No members yet. Share the join code above to add people to the board.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
+
+</div>
+
 {% endblock %}

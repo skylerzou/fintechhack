@@ -35,6 +35,16 @@ def pending_reim(org): #exclusively non completed reimbursement
             .filter(organization = org, status__in = COMMITTED_STATUSES)
             .aggregate(total= Coalesce(Sum(pending), Decimal("0")))["total"])
 
+def pending_approved(org): #exclusively approved
+    pending = Case(
+        When(status = SpendingReq.Status.APPROVED, then= F("spend")),
+        default = Decimal("0"),
+        output_field = DecimalField(max_digits = 10, decimal_places = 2)
+    )
+    return (SpendingReq.objects
+            .filter(organization = org, status__in = COMMITTED_STATUSES)
+            .aggregate(total= Coalesce(Sum(pending), Decimal("0")))["total"])
+
 def true_bal(org):
     return (LedgerEntry.objects
     .filter(organization=org)
@@ -50,9 +60,16 @@ def true_bal(org):
 def org_fin_view(*, actor, org):
     required_role(actor, org, PERMISSIONS["view.requests.org"])
     real = true_bal(org)
-    pendreim = pending_reim(org)
-    approved = approved_spend(org)
-    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved}
+    pendreim = pending_reim(org) #exclusively pending reimbursements
+    pendapp = pending_approved(org) #exclusively pending approvals
+
+    approved = approved_spend(org) #total of all approved spend (approved reqs and submitted reimbursement)
+
+    working = real - approved
+
+    ledgers = ledger_list(actor = actor, org = org)
+    
+    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved, "pending_approved": pendapp, "working_balance": working, "ledgers": ledgers}
 
 @transaction.atomic
 def bal_adjustment(*, actor, org, adjustment, title):
@@ -198,5 +215,8 @@ def list_personal(*, actor, org, status):
     submitted_count = SpendingReq.objects.filter(requested_by = actor, organization=org, status=SpendingReq.Status.SUBMITTED).count()
     return {"spending_reqs" :spending_reqs.order_by("-created_at"), "pending_count": pending_count, "submitted_count": submitted_count}
 
-
+def ledger_list(*, actor, org):
+    required_role(actor, org, PERMISSIONS["view.ledger"])
+    ledgers = LedgerEntry.objects.filter(organization = org)
+    return ledgers.select_related("done_by").order_by("-created_at")
     

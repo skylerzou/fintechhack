@@ -1,13 +1,145 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Log in #}
+
 {% block title %}Log in{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ============================================================
+   LOG IN — page-only styling (adds to the shared CSS)
+   ============================================================ */
+
+.auth-wrap {
+  max-width: 440px;
+  margin: 8px auto 0;
+}
+
+.auth-card { padding: 28px 28px 26px; }
+
+.auth-card__title { font-size: 20px; }
+
+.auth-card__hint {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--type-secondary);
+}
+
+.auth-form { margin-top: 22px; }
+
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  margin-bottom: 6px;
+}
+
+.field__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--type-primary);
+  background: var(--page-bg);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;                 /* square corners */
+  padding: 10px 12px;
+  transition: border-color .18s ease, background-color .25s ease;
+}
+.field__input:hover { border-color: var(--btn2-border); }
+.field__input:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.field__help {
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--type-secondary);
+  opacity: .85;
+}
+
+/* Form errors — rendered from the form object, not from messages */
+.errorlist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.errorlist li {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #EF4444;
+  padding: 8px 12px;
+}
+.field .errorlist { margin: 0 0 6px; }
+
+.auth-submit { width: 100%; padding: 11px 18px; margin-top: 4px; }
+
+.auth-alt {
+  font-size: 13px;
+  text-align: center;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--surface-border);
+  color: var(--type-secondary);
+}
+.auth-alt a {
+  font-weight: 600;
+  color: var(--btn2-text);
+  text-decoration: none;
+  border-bottom: 1.5px solid var(--accent-line);
+}
+.auth-alt a:hover { color: var(--type-primary); }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>Log in</h1>
-  <form method="post" action="{% url 'login' %}">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit">Log in</button>
-  </form>
-  <p>No account yet? <a href="{% url 'signup' %}">Sign up</a></p>
+<div class="auth-wrap">
+
+  <div class="page__header">
+    <h1 class="page__title">Log in</h1>
+    <p class="page__description">Access your organization's financial tracking.</p>
+  </div>
+
+  <section class="card auth-card">
+
+    <h2 class="auth-card__title">Welcome back</h2>
+    <p class="auth-card__hint">Enter your email and password to continue.</p>
+
+    <!-- Posts to the login URL; the hidden next field preserves a join link -->
+    <form class="auth-form" method="post" action="{% url 'login' %}">
+      {% csrf_token %}
+
+      {{ form.non_field_errors }}
+
+      <div class="field">
+        <label class="field__label" for="id_username">Email</label>
+        {{ form.username.errors }}
+        <input class="field__input" type="text" name="username" id="id_username"
+               value="{{ form.username.value|default_if_none:'' }}"
+               autocomplete="username" autofocus required>
+        <p class="field__help">Type your email address here.</p>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="id_password">Password</label>
+        {{ form.password.errors }}
+        <input class="field__input" type="password" name="password" id="id_password"
+               autocomplete="current-password" required>
+      </div>
+
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <button type="submit" class="btn btn--primary auth-submit">Log in</button>
+    </form>
+
+    <p class="auth-alt">
+      Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
+    </p>
+
+  </section>
+
+</div>
 {% endblock %}

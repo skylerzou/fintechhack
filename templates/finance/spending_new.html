@@ -1,12 +1,102 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > New spending request #}
-{% block title %}New spending request{% endblock %}
+
 {% block content %}
-  <h1>New spending request</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create request</button>
-  </form>
-  <p><a href="{% url 'request-list-mine' organization_slug=current_org.slug %}">Back to my requests</a></p>
+<style>
+    .spending-new-wrap {
+        display: flex;
+        gap: 2rem;
+        align-items: flex-start;
+    }
+    .spending-new-sidebar {
+        flex: 0 0 340px;
+        border-right: 1px solid var(--color-border, #ddd);
+        padding-right: 1.5rem;
+    }
+    .spending-new-sidebar h2 {
+        white-space: nowrap;
+    }
+    .spending-new-form {
+        flex: 1;
+        max-width: 520px;
+    }
+    .spending-new-form label {
+        display: block;
+        font-weight: 600;
+        margin-top: 1.25rem;
+        margin-bottom: 0.4rem;
+    }
+    .spending-new-form input[type="text"],
+    .spending-new-form input[type="number"] {
+        width: 100%;
+        padding: 0.6rem;
+        box-sizing: border-box;
+        background-color: var(--color-bg, #fff);
+        color: var(--color-text, #222);
+        border: 1px solid var(--color-border, #ccc);
+    }
+    .spending-new-form input[type="text"]::placeholder,
+    .spending-new-form input[type="number"]::placeholder {
+        color: var(--color-text-muted, #888);
+    }
+    .spending-new-form input[type="text"]:focus,
+    .spending-new-form input[type="number"]:focus {
+        outline: none;
+        border-color: var(--color-accent, #555);
+    }
+    .spending-new-actions {
+        margin-top: 2.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .btn {
+        display: inline-block;
+        padding: 0.6rem 1.2rem;
+        text-decoration: none;
+        border-radius: 4px;
+        border: 1px solid var(--color-border, #333);
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .btn-secondary {
+        background: var(--color-bg, #fff);
+        color: var(--color-text, #333);
+    }
+    .btn-primary {
+        background: var(--color-text, #222);
+        color: var(--color-bg, #fff);
+    }
+</style>
+<div class="spending-new-wrap">
+    <aside class="spending-new-sidebar">
+        <h2>Submit Spending Request</h2>
+        <p class="reimbursement-policy">
+            <strong>Reimbursement policy:</strong>
+            Once approved, you may complete the purchase and submit your final
+            receipt total.
+        </p>
+    </aside>
+
+    <section class="spending-new-form">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <label for="{{ form.title.id_for_label }}">Title</label>
+            {{ form.title }}
+            {{ form.title.errors }}
+
+            <label for="{{ form.spend.id_for_label }}">Requested Amount</label>
+            {{ form.spend }}
+            {{ form.spend.errors }}
+
+            <div class="spending-new-actions">
+                <a href="{% url 'request-list' organization_slug=current_org.slug %}" class="btn btn-secondary">Back to My Requests</a>
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    </section>
+</div>
 {% endblock %}
+
+

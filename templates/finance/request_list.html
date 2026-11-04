@@ -1,63 +1,336 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > All requests #}
-{% block title %}All requests{% endblock %}
-{% block content %}
-  <h1>All requests</h1>
-  <p>Awaiting review: {{ pending_count }}</p>
-  <p>Waiting to be paid out: {{ submitted_count }}</p>
 
-  <form method="get">
-    <label for="status">Show</label>
-    <select name="status" id="status">
-      <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
-      <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Awaiting Review</option>
-      <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Request Approved</option>
-      <option value="denied" {% if status_filter == "denied" %}selected{% endif %}>Request Denied</option>
-      <option value="submitted" {% if status_filter == "submitted" %}selected{% endif %}>Reimbursement Submitted</option>
-      <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed Request</option>
-    </select>
-    <button type="submit">Filter</button>
-  </form>
 
-  {% if spending_reqs %}
-    <table>
-      <thead>
-        <tr><th>Title</th><th>Requested by</th><th>Approved amount</th><th>Reimbursement</th><th>Status</th><th>Created</th><th>Actions</th></tr>
-      </thead>
-      <tbody>
-        {% for r in spending_reqs %}
-          <tr>
-            <td>{{ r.title }}</td>
-            <td>{{ r.requested_by.get_full_name|default:r.requested_by.username }}</td>
-            <td>${{ r.spend|floatformat:2 }}</td>
-            <td>{% if r.reimamount is not None %}${{ r.reimamount|floatformat:2 }}{% else %}&mdash;{% endif %}</td>
-            <td>
-              {{ r.get_status_display }}
-              {% if r.over_budget %}<strong>Over budget</strong>{% endif %}
-            </td>
-            <td>{{ r.created_at|date:"M j, Y" }}</td>
-            <td>
-              {% if r.status == "pending" %}
-                <form method="post" action="{% url 'request-approve' organization_slug=current_org.slug request_id=r.id %}">
-                  {% csrf_token %}
-                  <button type="submit">Approve</button>
-                </form>
-                <form method="post" action="{% url 'request-deny' organization_slug=current_org.slug request_id=r.id %}">
-                  {% csrf_token %}
-                  <button type="submit">Deny</button>
-                </form>
-              {% elif r.status == "submitted" %}
-                <form method="post" action="{% url 'request-complete' organization_slug=current_org.slug request_id=r.id %}">
-                  {% csrf_token %}
-                  <button type="submit">Complete</button>
-                </form>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No requests match this filter.</p>
-  {% endif %}
+{% block title %}All Requests{% endblock %}
+
+
+{% block extra_head %}
+<style>
+ .req-wrap { display: flex; flex-direction: column; gap: 20px; }
+
+
+ /* --- Summary counters --- */
+ .req-stats {
+   display: grid;
+   gap: 16px;
+   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+ }
+ .stat { display: flex; flex-direction: column; gap: 2px; }
+ .stat__label {
+   font-size: 10px;
+   font-weight: 600;
+   letter-spacing: .14em;
+   text-transform: uppercase;
+   color: var(--type-secondary);
+ }
+ .stat__value {
+   font-size: 30px;
+   font-weight: 700;
+   color: var(--type-primary);
+   line-height: 1.1;
+ }
+ .stat__note { font-size: 12px; color: var(--type-secondary); }
+
+
+ /* --- Filter buttons --- */
+ .filter-bar {
+   display: flex;
+   flex-direction: column;
+   gap: 10px;
+   padding-bottom: 18px;
+   margin-bottom: 18px;
+   border-bottom: 1.5px solid var(--surface-border);
+ }
+ .filter-label {
+   font-size: 11px;
+   font-weight: 600;
+   letter-spacing: .1em;
+   text-transform: uppercase;
+   color: var(--type-secondary);
+ }
+ .filter-tabs {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 8px;
+ }
+ .filter-tab {
+   font-family: inherit;
+   font-size: 12px;
+   font-weight: 600;
+   letter-spacing: .01em;
+   padding: 8px 15px;
+   border: 1.5px solid var(--surface-border);
+   border-radius: 0;
+   background: transparent;
+   color: var(--type-secondary);
+   text-decoration: none;
+   white-space: nowrap;
+   cursor: pointer;
+   transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+ }
+ .filter-tab:hover {
+   border-color: var(--btn2-border);
+   color: var(--btn2-text);
+ }
+ .filter-tab--active {
+   background: var(--cta-bg);
+   border-color: var(--cta-bg);
+   color: var(--cta-text);
+ }
+ .filter-tab--active:hover {
+   background: var(--cta-bg-hover);
+   border-color: var(--cta-bg-hover);
+   color: var(--cta-text);
+ }
+
+
+ /* --- Table --- */
+ .table-scroll { overflow-x: auto; }
+ .req-table {
+   width: 100%;
+   border-collapse: collapse;
+   font-size: 14px;
+   min-width: 900px;
+ }
+ .req-table th {
+   text-align: left;
+   font-size: 10px;
+   font-weight: 600;
+   letter-spacing: .12em;
+   text-transform: uppercase;
+   color: var(--type-secondary);
+   padding: 0 14px 10px;
+   border-bottom: 1.5px solid var(--surface-border);
+   white-space: nowrap;
+ }
+ .req-table td {
+   padding: 14px;
+   border-bottom: 1px solid var(--surface-border);
+   vertical-align: top;
+   color: var(--type-secondary);
+ }
+ .req-table tr:last-child td { border-bottom: none; }
+
+
+ .req-title { font-weight: 600; color: var(--type-primary); }
+ .req-person { font-size: 13px; }
+ .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+ .muted { color: var(--type-secondary); opacity: .7; }
+
+
+ /* --- Status + over budget labels --- */
+ .tag {
+   display: inline-block;
+   font-size: 11px;
+   font-weight: 600;
+   letter-spacing: .04em;
+   padding: 4px 10px;
+   border: 1.5px solid var(--surface-border);
+   color: var(--type-primary);
+   white-space: nowrap;
+ }
+ .tag--pending   { border-color: var(--btn2-border); color: var(--btn2-text); }
+ .tag--approved  { border-color: var(--cta-bg); color: var(--cta-bg); }
+ .tag--denied    { border-color: #EF4444; color: #EF4444; }
+ .tag--submitted { border-color: var(--chart-line); color: var(--chart-line); }
+ .tag--completed { border-color: var(--cta-bg); color: var(--cta-bg); }
+
+
+ .tag--over {
+   margin-top: 6px;
+   display: inline-block;
+   border-color: #EF4444;
+   color: #EF4444;
+   font-weight: 700;
+ }
+
+
+ /* --- Row actions --- */
+ .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+ .row-actions form { margin: 0; }
+ .btn--sm { padding: 6px 13px; font-size: 12px; }
+ .btn--danger {
+   background: transparent;
+   color: #EF4444;
+   border-color: #EF4444;
+ }
+ .btn--danger:hover { background: rgba(239, 68, 68, .1); }
+
+
+ /* --- Empty state --- */
+ .empty {
+   text-align: center;
+   padding: 44px 24px;
+ }
+ .empty__title { font-size: 16px; margin-bottom: 6px; }
+ .empty__body { font-size: 14px; color: var(--type-secondary); }
+
+
+ @media (max-width: 720px) {
+   .filter-tab { flex: 1 1 auto; text-align: center; }
+ }
+</style>
 {% endblock %}
+
+
+{% block content %}
+<div class="page__header">
+ <h1 class="page__title">All Requests</h1>
+ <p class="page__description">
+   Every spending request submitted in
+   {% if current_org %}{{ current_org.name }}{% else %}this organization{% endif %}, newest first.
+ </p>
+</div>
+
+
+<div class="req-wrap">
+
+
+ <!-- ============ Counters (always the org totals, filter ignored) ============ -->
+ <section class="req-stats">
+   <article class="card stat">
+     <span class="stat__label">Awaiting Review</span>
+     <span class="stat__value">{{ pending_count }}</span>
+     <span class="stat__note">Pending requests across the whole organization.</span>
+   </article>
+
+
+   <article class="card stat">
+     <span class="stat__label">Reimbursement Submitted</span>
+     <span class="stat__value">{{ submitted_count }}</span>
+     <span class="stat__note">Waiting to be paid out and completed.</span>
+   </article>
+ </section>
+
+
+ <!-- ============ Request table ============ -->
+ <section class="card">
+
+
+   <!-- Status filters: GET form, no action, each button submits name="status" -->
+   <form method="get" class="filter-bar">
+     <span class="filter-label" id="status-filter-label">Filter by status</span>
+     <div class="filter-tabs" role="group" aria-labelledby="status-filter-label">
+       <button type="submit" name="status" value="all"
+               class="filter-tab {% if status_filter == 'all' %}filter-tab--active{% endif %}"
+               {% if status_filter == 'all' %}aria-current="true"{% endif %}>All</button>
+
+
+       <button type="submit" name="status" value="pending"
+               class="filter-tab {% if status_filter == 'pending' %}filter-tab--active{% endif %}"
+               {% if status_filter == 'pending' %}aria-current="true"{% endif %}>Awaiting Review</button>
+
+
+       <button type="submit" name="status" value="approved"
+               class="filter-tab {% if status_filter == 'approved' %}filter-tab--active{% endif %}"
+               {% if status_filter == 'approved' %}aria-current="true"{% endif %}>Request Approved</button>
+
+
+       <button type="submit" name="status" value="denied"
+               class="filter-tab {% if status_filter == 'denied' %}filter-tab--active{% endif %}"
+               {% if status_filter == 'denied' %}aria-current="true"{% endif %}>Request Denied</button>
+
+
+       <button type="submit" name="status" value="submitted"
+               class="filter-tab {% if status_filter == 'submitted' %}filter-tab--active{% endif %}"
+               {% if status_filter == 'submitted' %}aria-current="true"{% endif %}>Reimbursement Submitted</button>
+
+
+       <button type="submit" name="status" value="completed"
+               class="filter-tab {% if status_filter == 'completed' %}filter-tab--active{% endif %}"
+               {% if status_filter == 'completed' %}aria-current="true"{% endif %}>Completed Request</button>
+     </div>
+   </form>
+
+
+   {% if spending_reqs %}
+     <div class="table-scroll">
+       <table class="req-table">
+         <thead>
+           <tr>
+             <th scope="col">Request</th>
+             <th scope="col">Requested By</th>
+             <th scope="col">Approved Amount</th>
+             <th scope="col">Reimbursement</th>
+             <th scope="col">Status</th>
+             <th scope="col">Date</th>
+             <th scope="col">Actions</th>
+           </tr>
+         </thead>
+         <tbody>
+           {% for r in spending_reqs %}
+             <tr>
+               <td>
+                 <span class="req-title">{{ r.title }}</span>
+               </td>
+
+
+               <td class="req-person">
+                 {{ r.requested_by.get_full_name|default:r.requested_by.username }}
+               </td>
+
+
+               <td class="num">${{ r.spend|floatformat:2 }}</td>
+
+
+               <td class="num">
+                 {% if r.reimamount is not None %}
+                   ${{ r.reimamount|floatformat:2 }}
+                 {% else %}
+                   <span class="muted">&mdash;</span>
+                 {% endif %}
+               </td>
+
+
+               <td>
+                 <span class="tag tag--{{ r.status }}">{{ r.get_status_display }}</span>
+                 {% if r.over_budget %}
+                   <br />
+                   <span class="tag tag--over">Over budget</span>
+                 {% endif %}
+               </td>
+
+
+               <td class="num">{{ r.created_at|date:"M j, Y" }}</td>
+
+
+               <td>
+                 <div class="row-actions">
+                   {% if r.status == "pending" %}
+                     <form method="post" action="{% url 'request-approve' organization_slug=current_org.slug request_id=r.id %}">
+                       {% csrf_token %}
+                       <button type="submit" class="btn btn--primary btn--sm">Approve</button>
+                     </form>
+
+
+                     <form method="post" action="{% url 'request-deny' organization_slug=current_org.slug request_id=r.id %}">
+                       {% csrf_token %}
+                       <button type="submit" class="btn btn--secondary btn--danger btn--sm">Deny</button>
+                     </form>
+                   {% elif r.status == "submitted" %}
+                     <form method="post" action="{% url 'request-complete' organization_slug=current_org.slug request_id=r.id %}">
+                       {% csrf_token %}
+                       <button type="submit" class="btn btn--primary btn--sm">Complete</button>
+                     </form>
+                   {% else %}
+                     <span class="muted">&mdash;</span>
+                   {% endif %}
+                 </div>
+               </td>
+             </tr>
+           {% endfor %}
+         </tbody>
+       </table>
+     </div>
+   {% else %}
+     <div class="empty">
+       <h2 class="empty__title">No requests match this filter.</h2>
+       <p class="empty__body">Try choosing a different status filter above.</p>
+     </div>
+   {% endif %}
+ </section>
+
+
+</div>
+{% endblock %}
+

@@ -1,21 +1,123 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Overview #}
+
 {% block title %}Overview{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Header: title on the left, small actions on the right */
+  .overview-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 24px;
+    max-width: 1000px;
+    margin: 0 auto 24px;
+  }
+  .overview-header .page__header { margin: 0; }
+  .overview-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .overview-actions .btn { padding: 6px 12px; font-size: 13px; }
+
+  /* Three balances, centered, side by side */
+  .balances {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .balance { display: flex; flex-direction: column; gap: 6px; }
+  .balance__label { font-size: 16px; font-weight: 600; color: var(--type-primary); }
+  .balance__hint { font-size: 13px; color: var(--type-secondary); }
+  .balance__amt {
+    margin-top: auto;
+    padding-top: 16px;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--type-primary);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .balance__amt.is-negative { color: var(--alert); }
+  .balance .tag { margin-left: 8px; vertical-align: middle; }
+
+  /* Breakdown inside the Committed card */
+  .breakdown { margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .breakdown div { display: flex; justify-content: space-between; gap: 12px; }
+  .breakdown dt, .breakdown dd { margin: 0; font-size: 13px; color: var(--type-secondary); }
+  .breakdown dd { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Overspend limit */
+  .overspend {
+    max-width: 1000px;
+    margin: 28px auto 0;
+  }
+  .overspend__figure {
+    margin: 4px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--type-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 900px) {
+    .balances { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .balance__amt { font-size: 28px; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>{{ current_org.name }} overview</h1>
-  <dl>
-    <dt>Balance</dt>
-    <dd>{% if true_balance < 0 %}-${{ true_balance|floatformat:2|cut:"-" }}{% else %}${{ true_balance|floatformat:2 }}{% endif %}</dd>
-    <dt>Reimbursements waiting to be paid</dt>
-    <dd>${{ pending_reim|floatformat:2 }}</dd>
-    <dt>Approved, not yet reimbursed</dt>
-    <dd>${{ curr_approved|floatformat:2 }}</dd>
-    <dt>Overspend limit</dt>
-    <dd>${{ current_org.overspend_limit|floatformat:2 }}</dd>
-  </dl>
-  <ul>
-    <li><a href="{% url 'request-list' organization_slug=current_org.slug %}">All requests</a></li>
-    <li><a href="{% url 'bal-adjustment' organization_slug=current_org.slug %}">Record dues or a correction</a></li>
-    <li><a href="{% url 'overspend-adjust' organization_slug=current_org.slug %}">Change the overspend limit</a></li>
-  </ul>
+<div class="overview-header">
+  <div class="page__header">
+    <h1 class="page__title">Overview</h1>
+    <p class="page__description">Updates as requests are approved, reimbursed, and paid out.</p>
+  </div>
+  <div class="overview-actions">
+    <a class="btn btn--primary" href="{% url 'bal-adjustment' organization_slug=current_org.slug %}">Record dues or a correction</a>
+    <a class="btn btn--secondary" href="{% url 'request-list' organization_slug=current_org.slug %}">All requests</a>
+  </div>
+</div>
+
+<div class="balances">
+
+  <section class="card balance" aria-labelledby="true-title">
+    <h2 class="balance__label" id="true-title">True balance</h2>
+    <p class="balance__hint">Every ledger entry added up: dues and corrections in, paid reimbursements out.</p>
+    <p class="balance__amt{% if true_balance < 0 %} is-negative{% endif %}">{% if true_balance < 0 %}-${{ true_balance|floatformat:2|cut:"-" }}{% else %}${{ true_balance|floatformat:2 }}{% endif %}</p>
+  </section>
+
+  <section class="card balance" aria-labelledby="committed-title">
+    <h2 class="balance__label" id="committed-title">Committed</h2>
+    <p class="balance__hint">Money already promised to members.</p>
+    <dl class="breakdown">
+      <div>
+        <dt>Approved, reimbursement not requested yet</dt>
+        <dd>${{ pending_approved|floatformat:2 }}</dd>
+      </div>
+      <div>
+        <dt>Reimbursement requested, not paid yet</dt>
+        <dd>${{ pending_reim|floatformat:2 }}</dd>
+      </div>
+    </dl>
+    <p class="balance__amt">${{ curr_approved|floatformat:2 }}</p>
+  </section>
+
+  <section class="card balance" aria-labelledby="working-title">
+    <h2 class="balance__label" id="working-title">Working balance{% if working_balance < 0 %}<span class="tag tag--alert">Overcommitted</span>{% endif %}</h2>
+    <p class="balance__hint">What's left to approve new spending.</p>
+    <p class="balance__amt{% if working_balance < 0 %} is-negative{% endif %}">{% if working_balance < 0 %}-${{ working_balance|floatformat:2|cut:"-" }}{% else %}${{ working_balance|floatformat:2 }}{% endif %}</p>
+  </section>
+
+</div>
+
+<section class="overspend" aria-labelledby="overspend-title">
+  <h2 class="card__title" id="overspend-title">Overspend limit</h2>
+  <p class="overspend__figure">${{ current_org.overspend_limit|floatformat:2 }}</p>
+  <p><a href="{% url 'overspend-adjust' organization_slug=current_org.slug %}">Change the overspend limit</a></p>
+</section>
 {% endblock %}

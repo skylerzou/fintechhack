@@ -1,12 +1,163 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Create an organization #}
+
 {% block title %}Create an organization{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ============================================================
+   CREATE AN ORGANIZATION — page-only styling (adds to shared CSS)
+   ============================================================ */
+
+.form-wrap {
+  max-width: 560px;
+  margin: 8px auto 0;
+}
+
+.form-card { padding: 28px 28px 26px; }
+
+.form-card__title { font-size: 20px; }
+
+.form-card__hint {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--type-secondary);
+}
+
+.org-form { margin-top: 22px; }
+
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  margin-bottom: 6px;
+}
+
+.field__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--type-primary);
+  background: var(--page-bg);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;                 /* square corners */
+  padding: 10px 12px;
+  transition: border-color .18s ease, background-color .25s ease;
+}
+.field__input:hover { border-color: var(--btn2-border); }
+.field__input:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.field__help {
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--type-secondary);
+  opacity: .85;
+}
+
+/* Form errors — rendered from the form object, not from messages */
+.errorlist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.errorlist li {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #EF4444;
+  padding: 8px 12px;
+}
+.field .errorlist { margin: 0 0 6px; }
+
+/* What happens after a successful create */
+.note {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--accent-line);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  color: var(--type-secondary);
+}
+.note strong { color: var(--type-primary); font-weight: 600; }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.form-actions .btn { flex: 1; }
+
+.form-alt {
+  font-size: 13px;
+  text-align: center;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--surface-border);
+  color: var(--type-secondary);
+}
+.form-alt a {
+  font-weight: 600;
+  color: var(--btn2-text);
+  text-decoration: none;
+  border-bottom: 1.5px solid var(--accent-line);
+}
+.form-alt a:hover { color: var(--type-primary); }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>Create an organization</h1>
-  <p>You'll be its president.</p>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create organization</button>
-  </form>
+<div class="form-wrap">
+
+  <div class="page__header">
+    <h1 class="page__title">Create an organization</h1>
+    <p class="page__description">Start a new organization and begin tracking its spending.</p>
+  </div>
+
+  <section class="card form-card">
+
+    <h2 class="form-card__title">Organization details</h2>
+    <p class="form-card__hint">You'll be taken to the new organization's Overview.</p>
+
+    <p class="note" style="margin-top:18px;">
+      You become the <strong>President</strong> of any organization you create.
+    </p>
+
+    <!-- Form page: posts back to its own URL, so no action attribute -->
+    <form class="org-form" method="post">
+      {% csrf_token %}
+
+      {{ form.non_field_errors }}
+
+      <div class="field">
+        <label class="field__label" for="id_name">Organization name</label>
+        {{ form.name.errors }}
+        <input class="field__input" type="text" name="name" id="id_name"
+               value="{{ form.name.value|default_if_none:'' }}"
+               autocomplete="organization" autofocus required>
+        <p class="field__help">
+          Must include at least one letter or number, and can't match an organization that already exists.
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Create organization</button>
+        <a class="btn btn--secondary" href="{% url 'org-picker' %}"
+           style="text-align:center; text-decoration:none;">Cancel</a>
+      </div>
+    </form>
+
+    <p class="form-alt">
+      Have a join code instead? <a href="{% url 'join' %}">Join an organization</a>
+    </p>
+
+  </section>
+
+</div>
 {% endblock %}

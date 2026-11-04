@@ -1,13 +1,201 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Overspend limit #}
+
 {% block title %}Overspend limit{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ============================================================
+   OVERSPEND LIMIT — page-only styling (adds to shared CSS)
+   ============================================================ */
+
+.form-wrap {
+  max-width: 580px;
+  margin: 8px auto 0;
+}
+
+.form-card { padding: 28px 28px 26px; }
+
+.form-card__title { font-size: 20px; }
+
+.form-card__hint {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--type-secondary);
+}
+
+.limit-form { margin-top: 22px; }
+
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  margin-bottom: 6px;
+}
+
+/* Dollar input with a fixed currency prefix */
+.money-input {
+  display: flex;
+  align-items: stretch;
+  border: 1.5px solid var(--surface-border);
+  background: var(--page-bg);
+  transition: border-color .18s ease, background-color .25s ease;
+}
+.money-input:hover { border-color: var(--btn2-border); }
+.money-input:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.money-input__prefix {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--type-secondary);
+  background: var(--surface);
+  border-right: 1.5px solid var(--surface-border);
+}
+
+.money-input__field {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--type-primary);
+  background: transparent;
+  border: 0;
+  border-radius: 0;                 /* square corners */
+  padding: 11px 12px;
+}
+.money-input__field:focus { outline: none; }
+
+.field__help {
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--type-secondary);
+  opacity: .85;
+}
+
+/* Form errors — rendered from the form object, not from messages */
+.errorlist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.errorlist li {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #EF4444;
+  padding: 8px 12px;
+}
+.field .errorlist { margin: 0 0 6px; }
+
+.note {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--accent-line);
+  padding: 12px 14px;
+  color: var(--type-secondary);
+}
+.note strong { color: var(--type-primary); font-weight: 600; }
+
+.current {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+}
+.current__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+}
+.current__value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--type-primary);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.form-actions .btn { flex: 1; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>Overspend limit</h1>
-  <p>Reimbursements more than this many dollars above the approved amount are flagged "Over budget" for review. They are not blocked.</p>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save limit</button>
-  </form>
-  <p><a href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Back to overview</a></p>
+<div class="form-wrap">
+
+  <div class="page__header">
+    <h1 class="page__title">Overspend limit</h1>
+    <p class="page__description">
+      {% if current_org %}Set the overspend allowance for {{ current_org.name }}.{% endif %}
+    </p>
+  </div>
+
+  <section class="card form-card">
+
+    <h2 class="form-card__title">Flagging threshold</h2>
+    <p class="form-card__hint">Treasurers and the president can change this.</p>
+
+    <p class="note" style="margin-top:18px;">
+      Reimbursements more than this many dollars above the approved amount are flagged
+      <strong>Over budget</strong>. They are <strong>not blocked</strong>.
+    </p>
+
+    {% if current_org %}
+    <div class="current">
+      <span class="current__label">Current limit</span>
+      <span class="current__value">${{ current_org.overspend_limit|floatformat:2 }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Form page: posts back to its own URL, so no action attribute -->
+    <form class="limit-form" method="post">
+      {% csrf_token %}
+
+      {{ form.non_field_errors }}
+
+      <div class="field">
+        <label class="field__label" for="id_overspend_limit">Overspend limit</label>
+        {{ form.overspend_limit.errors }}
+        <div class="money-input">
+          <span class="money-input__prefix" aria-hidden="true">$</span>
+          <input class="money-input__field" type="number" name="overspend_limit" id="id_overspend_limit"
+                 value="{{ form.overspend_limit.value|default_if_none:'' }}"
+                 min="0" step="0.01" inputmode="decimal" autocomplete="off" required>
+        </div>
+        <p class="field__help">
+          Dollars, 0 or more. Enter 0 to flag any reimbursement above the approved amount.
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Save limit</button>
+        {% if current_org %}
+        <a class="btn btn--secondary" href="{% url 'org-fin-overview' organization_slug=current_org.slug %}"
+           style="text-align:center; text-decoration:none;">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+
+  </section>
+
+</div>
 {% endblock %}

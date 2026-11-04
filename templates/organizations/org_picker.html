@@ -1,26 +1,212 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Org picker #}
-{% block title %}Your organizations{% endblock %}
+
+{% block title %}Your orgs{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ============================================================
+   ORG PICKER — page-only styling (adds to the shared CSS)
+   ============================================================ */
+
+.org-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* Each org is a card-sized link */
+.org-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color .25s ease, border-color .18s ease, transform .18s ease;
+}
+.org-card:hover {
+  border-color: var(--accent-line);
+  transform: translateY(-2px);
+}
+
+.org-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.org-card__name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--type-primary);
+  letter-spacing: -0.01em;
+}
+
+.org-card__slug {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  opacity: .8;
+  margin-top: 2px;
+}
+
+/* Role chip */
+.role-chip {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 0;                 /* square corners */
+  border: 1.5px solid var(--btn2-border);
+  color: var(--btn2-text);
+  white-space: nowrap;
+}
+.role-chip--president {
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  border-color: var(--cta-bg);
+}
+
+.org-card__go {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--type-secondary);
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--surface-border);
+}
+.org-card__go svg {
+  width: 15px;
+  height: 15px;
+  transition: transform .18s ease;
+}
+.org-card:hover .org-card__go { color: var(--type-primary); }
+.org-card:hover .org-card__go svg { transform: translateX(3px); }
+
+/* --- Empty state --- */
+.empty {
+  max-width: 560px;
+  margin: 8px auto 0;
+  text-align: center;
+  padding: 40px 28px;
+}
+
+.empty__icon {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 16px;
+  color: var(--accent-line);
+}
+.empty__icon svg { width: 100%; height: 100%; }
+
+.empty__title { font-size: 19px; }
+
+.empty__body {
+  font-size: 14px;
+  margin-top: 8px;
+  color: var(--type-secondary);
+}
+
+.empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.empty__actions .btn { text-decoration: none; display: inline-block; }
+
+/* --- Footer actions under a populated list --- */
+.picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--surface-border);
+}
+.picker-actions .btn { text-decoration: none; display: inline-block; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>Your organizations</h1>
-  {% if memberships %}
-    <ul>
-      {% for m in memberships %}
-        <li>
-          {% if m.role == "president" %}
-            <a href="{% url 'org-fin-overview' organization_slug=m.organization.slug %}">{{ m.organization.name }}</a>
-          {% elif m.role == "treasurer" %}
-            <a href="{% url 'request-list' organization_slug=m.organization.slug %}">{{ m.organization.name }}</a>
+
+<div class="page__header">
+  <h1 class="page__title">Your orgs</h1>
+  <p class="page__description">Choose an organization to open, or add another one.</p>
+</div>
+
+{% if memberships %}
+
+  <section class="org-grid">
+    {% for m in memberships %}
+
+      {% if m.role == 'president' %}
+        <a class="card org-card" href="{% url 'org-fin-overview' organization_slug=m.organization.slug %}">
+      {% elif m.role == 'treasurer' %}
+        <a class="card org-card" href="{% url 'request-list' organization_slug=m.organization.slug %}">
+      {% else %}
+        <a class="card org-card" href="{% url 'request-list-mine' organization_slug=m.organization.slug %}">
+      {% endif %}
+
+        <div class="org-card__top">
+          <div>
+            <div class="org-card__name">{{ m.organization.name }}</div>
+            <div class="org-card__slug">{{ m.organization.slug }}</div>
+          </div>
+          <span class="role-chip {% if m.role == 'president' %}role-chip--president{% endif %}">{{ m.get_role_display }}</span>
+        </div>
+
+        <span class="org-card__go">
+          {% if m.role == 'president' %}
+            Open overview
+          {% elif m.role == 'treasurer' %}
+            Open all requests
           {% else %}
-            <a href="{% url 'request-list-mine' organization_slug=m.organization.slug %}">{{ m.organization.name }}</a>
+            Open my requests
           {% endif %}
-          ({{ m.get_role_display }})
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>You're not in any organizations yet. Create one, or join one with a code from its president.</p>
-  {% endif %}
-  <p><a href="{% url 'org-create' %}">Create an organization</a></p>
-  <p><a href="{% url 'join' %}">Join with a code</a></p>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="M13 5l7 7-7 7"/>
+          </svg>
+        </span>
+
+      </a>
+    {% endfor %}
+  </section>
+
+  <div class="picker-actions">
+    <a class="btn btn--primary" href="{% url 'org-create' %}">Create an org</a>
+    <a class="btn btn--secondary" href="{% url 'join' %}">Join with a code</a>
+  </div>
+
+{% else %}
+
+  <section class="card empty">
+    <div class="empty__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 21h18"/><path d="M5 21V8l7-4 7 4v13"/><path d="M10 13h4M12 11v4"/>
+      </svg>
+    </div>
+
+    <h2 class="empty__title">You're not in an organization yet</h2>
+    <p class="empty__body">
+      Create a new organization to become its president, or join an existing
+      one with the code your president shared with you.
+    </p>
+
+    <div class="empty__actions">
+      <a class="btn btn--primary" href="{% url 'org-create' %}">Create an org</a>
+      <a class="btn btn--secondary" href="{% url 'join' %}">Join with a code</a>
+    </div>
+  </section>
+
+{% endif %}
+
 {% endblock %}

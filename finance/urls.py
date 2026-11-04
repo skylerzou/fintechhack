@@ -11,5 +11,6 @@ urlpatterns = [
     path('requests/<int:request_id>/complete/', views.request_complete_view, name = 'request-complete'),
     path('requests/<int:request_id>/reimburse/', views.spending_request_reim, name = 'request-reim'),
     path('requests/mine/create/', views.spending_request_new, name = 'request-create'),
-    path('overview/bal-adjustment/', views.bal_adjustment_view, name = 'bal-adjustment')
+    path('overview/bal-adjustment/', views.bal_adjustment_view, name = 'bal-adjustment'),
+    path('ledger-list/', views.ledger_list_view, name = 'ledger-list')
 ]

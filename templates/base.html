@@ -1,61 +1,687 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %} | Site Name</title>
-  {# STUB: replace with the real layout. Contract: base.html #}
-  {# Shared CSS goes here, OUTSIDE the block below. #}
-  {% block extra_head %}{% endblock %}
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{% block title %}{% endblock %} — Santumbral</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ===== SHARED CSS (loads outside blocks — pages cannot remove it) ===== -->
+<style>
+/* ============================================================
+   SANTUMBRAL — BASE THEME TOKENS
+   Every color in the app resolves from this block.
+   ============================================================ */
+
+:root[data-theme="light"] {
+  --page-bg:        #FFFFFF;                      /* Page Background — White        */
+  --surface:        rgba(248, 249, 250, 0.72);    /* Card / Surface — Light Gray    */
+  --surface-solid:  #F8F9FA;
+  --surface-border: rgba(15, 32, 66, 0.12);
+
+  --type-primary:   #0F2042;                      /* Deep Trust Navy                */
+  --type-secondary: #1E242B;                      /* Slate Charcoal                 */
+
+  --cta-bg:         #10B981;                      /* Growth Emerald                 */
+  --cta-text:       #FFFFFF;                      /* White text                     */
+  --cta-bg-hover:   #0EA372;
+
+  --btn2-border:    #0F2042;                      /* Deep Navy outline              */
+  --btn2-text:      #0F2042;
+  --btn2-hover-bg:  rgba(15, 32, 66, 0.07);
+
+  /* Data graphs / charts — Navy bars with Sky line indicators */
+  --chart-bar:      #0F2042;
+  --chart-line:     #38BDF8;
+  --chart-point:    #38BDF8;
+  --chart-glow:     none;
+  --chart-grid:     rgba(15, 32, 66, 0.10);
+
+  --accent-line:    #10B981;                      /* Banner underline               */
+  --focus-ring:     rgba(16, 185, 129, 0.45);
+}
+
+:root[data-theme="dark"] {
+  --page-bg:        #1E242B;                      /* Page Background — Slate Charcoal */
+  --surface:        rgba(15, 32, 66, 0.72);       /* Card / Surface — Deep Trust Navy */
+  --surface-solid:  #0F2042;
+  --surface-border: rgba(148, 163, 184, 0.22);
+
+  --type-primary:   #FFFFFF;                      /* Pure White                      */
+  --type-secondary: #94A3B8;                      /* Pale Muted Slate                */
+
+  --cta-bg:         #10B981;                      /* Growth Emerald                  */
+  --cta-text:       #1E242B;                      /* Charcoal text                   */
+  --cta-bg-hover:   #34D399;
+
+  --btn2-border:    #38BDF8;                      /* Digital Sky outline             */
+  --btn2-text:      #38BDF8;
+  --btn2-hover-bg:  rgba(56, 189, 248, 0.12);
+
+  /* Data graphs / charts — Glowing Sky line with Emerald indicators */
+  --chart-bar:      rgba(56, 189, 248, 0.18);
+  --chart-line:     #38BDF8;
+  --chart-point:    #10B981;
+  --chart-glow:     drop-shadow(0 0 6px rgba(56, 189, 248, 0.85));
+  --chart-grid:     rgba(148, 163, 184, 0.18);
+
+  --accent-line:    #10B981;
+  --focus-ring:     rgba(56, 189, 248, 0.5);
+}
+
+:root {
+  --sidebar-w:            248px;
+  --sidebar-w-collapsed:  64px;
+  --banner-h:             69px;
+}
+
+/* ============================================================
+   RESET + BASE
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  background: var(--page-bg);
+  color: var(--type-secondary);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .25s ease, color .25s ease;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  color: var(--type-primary);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p { margin: 0; }
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   BANNER
+   ============================================================ */
+
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 3px solid var(--accent-line);   /* Emerald embellishment line */
+  transition: background-color .25s ease;
+}
+
+.banner__inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* --- Sidebar toggle --- */
+.sidebar-toggle {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--type-primary);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+.sidebar-toggle:hover { border-color: var(--accent-line); }
+.sidebar-toggle svg { width: 18px; height: 18px; }
+
+/* --- Top left: tool identity --- */
+.brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand__name {
+  font-family: Arial, Helvetica, sans-serif;     /* Arial — tool name    */
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--type-primary);
+}
+
+.brand__subtitle {
+  font-family: Arial, Helvetica, sans-serif;     /* Arial — tool subtitle */
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+}
+
+/* --- Student organization name --- */
+.banner__divider {
+  width: 1px;
+  height: 34px;
+  background: var(--surface-border);
+}
+
+.org {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.org__label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  opacity: .8;
+}
+
+.org__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--type-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Right side: auth / account area --- */
+.banner__spacer { flex: 1; }
+
+.banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#auth-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-user {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  text-align: right;
+}
+.auth-user__name { font-size: 13px; font-weight: 600; color: var(--type-primary); }
+.auth-user__role { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--type-secondary); opacity: .8; }
+
+.inline-form { display: inline; margin: 0; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: 9px 18px;
+  border-radius: 0;                 /* square corners */
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.btn--primary {
+  background: var(--cta-bg);
+  color: var(--cta-text);
+}
+.btn--primary:hover { background: var(--cta-bg-hover); }
+
+.btn--secondary {
+  background: transparent;
+  color: var(--btn2-text);
+  border-color: var(--btn2-border);
+}
+.btn--secondary:hover { background: var(--btn2-hover-bg); }
+
+/* Theme toggle */
+.theme-toggle {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--type-primary);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+.theme-toggle:hover { border-color: var(--accent-line); }
+.theme-toggle svg { width: 18px; height: 18px; }
+
+:root[data-theme="light"] .icon-moon,
+:root[data-theme="dark"]  .icon-sun { display: none; }
+
+/* ============================================================
+   SHELL + COLLAPSIBLE SIDEBAR
+   ============================================================ */
+
+.shell { display: flex; align-items: flex-start; }
+
+.sidebar {
+  position: sticky;
+  top: var(--banner-h);
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  height: calc(100vh - var(--banner-h));
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--surface-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 20px 0;
+  transition: width .2s ease, flex-basis .2s ease, background-color .25s ease;
+}
+
+body.sidebar-collapsed .sidebar {
+  flex-basis: var(--sidebar-w-collapsed);
+  width: var(--sidebar-w-collapsed);
+}
+
+.nav-group { margin-bottom: 18px; }
+
+.nav-group__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  opacity: .7;
+  padding: 0 20px 8px;
+  white-space: nowrap;
+}
+
+.nav-link,
+.nav-logout__btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--type-secondary);
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.nav-link:hover,
+.nav-logout__btn:hover {
+  background: var(--btn2-hover-bg);
+  color: var(--type-primary);
+}
+
+.nav-link[aria-current="page"] {
+  color: var(--type-primary);
+  border-left-color: var(--accent-line);
+  background: var(--btn2-hover-bg);
+}
+
+.nav-link svg,
+.nav-logout__btn svg { width: 17px; height: 17px; flex: 0 0 17px; }
+
+body.sidebar-collapsed .nav-link__text,
+body.sidebar-collapsed .nav-group__label { display: none; }
+
+body.sidebar-collapsed .nav-link,
+body.sidebar-collapsed .nav-logout__btn { justify-content: center; padding: 10px 0; }
+
+body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
+
+.nav-divider {
+  height: 1px;
+  background: var(--surface-border);
+  margin: 0 0 18px;
+}
+
+/* ============================================================
+   LAYOUT + SURFACES
+   ============================================================ */
+
+.page {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 32px 28px 64px;
+}
+
+.page__header { margin-bottom: 24px; }
+.page__title { font-size: 26px; }
+.page__description { font-size: 14px; margin-top: 4px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 0;                 /* square corners */
+  padding: 22px 24px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background-color .25s ease, border-color .25s ease;
+}
+
+.card__title { font-size: 15px; }
+.card__body { font-size: 14px; margin-top: 8px; }
+
+.grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* ============================================================
+   FLASH MESSAGES (rendered by base.html only)
+   ============================================================ */
+
+.messages { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 10px; }
+
+.message {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 11px 16px;
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--type-secondary);
+  background: var(--surface);
+  color: var(--type-primary);
+}
+.message--success { border-left-color: var(--cta-bg); }
+.message--error   { border-left-color: #EF4444; }
+.message--warning { border-left-color: #F59E0B; }
+.message--info    { border-left-color: var(--chart-line); }
+
+@media (max-width: 720px) {
+  .banner__inner { padding: 12px 18px; gap: 14px; flex-wrap: wrap; }
+  .banner__divider, .org__label { display: none; }
+  .page { padding: 24px 18px 48px; }
+
+  .sidebar {
+    position: fixed;
+    top: var(--banner-h);
+    left: 0;
+    z-index: 40;
+    flex-basis: 0;
+    width: var(--sidebar-w);
+    transform: translateX(-100%);
+  }
+  body.sidebar-collapsed .sidebar { width: var(--sidebar-w); transform: translateX(0); }
+  body.sidebar-collapsed .nav-link__text,
+  body.sidebar-collapsed .nav-group__label { display: block; }
+  body.sidebar-collapsed .nav-link,
+  body.sidebar-collapsed .nav-logout__btn { justify-content: flex-start; padding: 10px 20px; }
+}
+</style>
+
+{% block extra_head %}{% endblock %}
 </head>
+
 <body>
-  <header>
-    {% if user.is_authenticated %}
-      <p>Signed in as {{ user.get_full_name|default:user.username }}</p>
-      <nav>
-        <a href="{% url 'org-picker' %}">Your orgs</a>
-        <a href="{% url 'join' %}">Join an org</a>
-        <a href="{% url 'org-create' %}">Create an org</a>
-        <form method="post" action="{% url 'logout' %}">
-          {% csrf_token %}
-          <button type="submit">Log out</button>
-        </form>
-      </nav>
-      {% if current_org %}
-        <nav>
-          <strong>{{ current_org.name }}</strong>
-          <a href="{% url 'request-list-mine' organization_slug=current_org.slug %}">My requests</a>
-          <a href="{% url 'request-create' organization_slug=current_org.slug %}">New request</a>
-          {% if current_role == "treasurer" or current_role == "president" %}
-            <a href="{% url 'request-list' organization_slug=current_org.slug %}">All requests</a>
-            <a href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Overview</a>
-          {% endif %}
-          {% if current_role == "president" %}
-            <a href="{% url 'member-list' organization_slug=current_org.slug %}">Members</a>
-          {% endif %}
-        </nav>
-      {% endif %}
-    {% else %}
-      <nav>
-        <a href="{% url 'login' %}">Log in</a>
-        <a href="{% url 'signup' %}">Sign up</a>
-      </nav>
+
+<!-- ===================== BANNER ===================== -->
+<header class="banner">
+  <div class="banner__inner">
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" aria-expanded="true" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M3 6h18M3 12h18M3 18h18"/>
+      </svg>
+    </button>
+
+    <!-- Top left: tool title + subtitle (no logo) -->
+    <div class="brand">
+      <span class="brand__name">Santumbral</span>
+      <span class="brand__subtitle">Financial Tracking</span>
+    </div>
+
+    {% if current_org %}
+      <div class="banner__divider" aria-hidden="true"></div>
+
+      <!-- Student organization name -->
+      <div class="org">
+        <span class="org__label">Organization</span>
+        <span class="org__name" id="org-name">{{ current_org.name }}</span>
+      </div>
     {% endif %}
-  </header>
 
-  {% if messages %}
-    <ul>
-      {% for message in messages %}
-        <li class="message-{{ message.tags }}">{{ message }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+    <div class="banner__spacer"></div>
 
-  <main>
+    <!-- Right side: login / sign-in / sign-out portal -->
+    <div class="banner__actions">
+      <div id="auth-slot" aria-label="Account area">
+        {% if user.is_authenticated %}
+          <div class="auth-user">
+            <span class="auth-user__name">{{ user.get_full_name|default:user.username }}</span>
+            {% if current_role %}<span class="auth-user__role">{{ current_role }}</span>{% endif %}
+          </div>
+          <form class="inline-form" method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--secondary">Log out</button>
+          </form>
+        {% else %}
+          <a class="btn btn--secondary" href="{% url 'login' %}">Log in</a>
+          <a class="btn btn--primary" href="{% url 'signup' %}">Sign up</a>
+        {% endif %}
+      </div>
+
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- ===================== COLLAPSIBLE SIDEBAR ===================== -->
+  <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+
+    {% if user.is_authenticated %}
+
+      {% if current_org %}
+        <div class="nav-group">
+          <div class="nav-group__label">{{ current_org.name }}</div>
+
+          <!-- Inside an org, everyone -->
+          <a class="nav-link" href="{% url 'request-list-mine' organization_slug=current_org.slug %}" title="My requests">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>
+            </svg>
+            <span class="nav-link__text">My requests</span>
+          </a>
+
+          <a class="nav-link" href="{% url 'request-create' organization_slug=current_org.slug %}" title="New request">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span class="nav-link__text">New request</span>
+          </a>
+
+          <!-- Treasurer and president -->
+          {% if current_role == 'treasurer' or current_role == 'president' %}
+            <a class="nav-link" href="{% url 'request-list' organization_slug=current_org.slug %}" title="All requests">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+              </svg>
+              <span class="nav-link__text">All requests</span>
+            </a>
+
+            <a class="nav-link" href="{% url 'org-fin-overview' organization_slug=current_org.slug %}" title="Overview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
+              </svg>
+              <span class="nav-link__text">Overview</span>
+            </a>
+          {% endif %}
+
+          <!-- President -->
+          {% if current_role == 'president' %}
+            <a class="nav-link" href="{% url 'member-list' organization_slug=current_org.slug %}" title="Members">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              </svg>
+              <span class="nav-link__text">Members</span>
+            </a>
+          {% endif %}
+        </div>
+
+        <div class="nav-divider" aria-hidden="true"></div>
+      {% endif %}
+
+      <div class="nav-group">
+        <div class="nav-group__label">Account</div>
+
+        <a class="nav-link" href="{% url 'org-picker' %}" title="Your orgs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M10 21v-6h4v6"/>
+          </svg>
+          <span class="nav-link__text">Your orgs</span>
+        </a>
+
+        <a class="nav-link" href="{% url 'join' %}" title="Join an org">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>
+          </svg>
+          <span class="nav-link__text">Join an org</span>
+        </a>
+
+        <a class="nav-link" href="{% url 'org-create' %}" title="Create an org">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 21h18"/><path d="M5 21V8l6-3 6 3v13"/><path d="M11 12h4M13 10v4"/>
+          </svg>
+          <span class="nav-link__text">Create an org</span>
+        </a>
+
+        <!-- Log out must be a POST form, never a plain link -->
+        <form class="nav-logout" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="nav-logout__btn" title="Log out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
+            </svg>
+            <span class="nav-link__text">Log out</span>
+          </button>
+        </form>
+      </div>
+
+    {% else %}
+
+      <div class="nav-group">
+        <div class="nav-group__label">Account</div>
+
+        <a class="nav-link" href="{% url 'login' %}" title="Log in">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>
+          </svg>
+          <span class="nav-link__text">Log in</span>
+        </a>
+
+        <a class="nav-link" href="{% url 'signup' %}" title="Sign up">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>
+          </svg>
+          <span class="nav-link__text">Sign up</span>
+        </a>
+      </div>
+
+    {% endif %}
+
+  </nav>
+
+  <!-- ===================== PAGE CONTENT ===================== -->
+  <main class="page">
+
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="message {% if message.tags %}message--{{ message.tags }}{% endif %}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
     {% block content %}{% endblock %}
+
   </main>
 
-  {# Shared JS goes here, OUTSIDE the block below. #}
-  {% block extra_js %}{% endblock %}
+</div>
+
+<!-- ===== SHARED JS (loads outside blocks — pages cannot remove it) ===== -->
+<script>
+  const root = document.documentElement;
+  const saved = localStorage.getItem('santumbral-theme');
+  if (saved) root.setAttribute('data-theme', saved);
+
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('santumbral-theme', next);
+  });
+
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  if (localStorage.getItem('santumbral-sidebar') === 'collapsed') {
+    document.body.classList.add('sidebar-collapsed');
+    sidebarToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  sidebarToggle.addEventListener('click', () => {
+    const collapsed = document.body.classList.toggle('sidebar-collapsed');
+    sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+    localStorage.setItem('santumbral-sidebar', collapsed ? 'collapsed' : 'expanded');
+  });
+
+  // Mark the current page in the sidebar
+  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    if (link.getAttribute('href') === window.location.pathname) {
+      link.setAttribute('aria-current', 'page');
+    }
+  });
+</script>
+
+{% block extra_js %}{% endblock %}
+
 </body>
 </html>

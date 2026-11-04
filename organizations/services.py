@@ -16,6 +16,7 @@ PERMISSIONS = {
     "org.admin" : {R.PRESIDENT},
     "bal.adjustment" : {R.TREASURER, R.PRESIDENT},
     "overspend.adjustment" : {R.TREASURER, R.PRESIDENT},
+    "view.ledger": {R.TREASURER, R.PRESIDENT},
 }
 
 def get_role(user, org):
@@ -91,6 +92,7 @@ def change_role(*, actor, membership_id, org, new_role):
     membership.role = new_role
     membership.save(update_fields=["role"])
     return membership
+
 
 def overspend_adjustment(*, actor, org, new_limit):
     required_role(user = actor, org = org, allowed_roles = PERMISSIONS["overspend.adjustment"])

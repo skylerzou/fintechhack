@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from organizations.services import required_role
-from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment
+from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment, ledger_list
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from django.core.exceptions import ValidationError,PermissionDenied
@@ -11,7 +11,7 @@ from finance.models import SpendingReq
 # Create your views here.
 
 VALID_STATUSES = {"all", *SpendingReq.Status.values}   # built from the model's own choices
-
+#add working balance
 def request_list(request, organization_slug):           # Django passes the slug; the middleware already used it
     status = request.GET.get("status", "all")
     if status not in VALID_STATUSES:
@@ -29,6 +29,10 @@ def request_list(request, organization_slug):           # Django passes the slug
         "pending_count": pending_count,
         "submitted_count": submitted_count,
     })
+
+def ledger_list_view(request, organization_slug):
+    ledgers = ledger_list(actor = request.user, org = request.org)
+    return render(request, "finance/ledger_list.html", {"ledgers": ledgers})
 
 @require_POST
 def request_complete_view(request, organization_slug, request_id):
@@ -110,7 +114,14 @@ def spending_request_reim(request, request_id, organization_slug):
     return render(request, "finance/reim_new.html", {"form" : form, "req" : req})
 
 def org_overview(request, organization_slug):
-    return render(request, "finance/overview.html", org_fin_view(actor = request.user, org = request.org))
+    datadict = org_fin_view(actor = request.user, org = request.org)
+    real = datadict["true_balance"]
+    pendreim = datadict["pending_reim"]
+    approved = datadict["curr_approved"]
+    pendapp = datadict["pending_approved"]
+    working = datadict["working_balance"]
+
+    return render(request, "finance/overview.html", {"true_balance": real, "pending_reim": pendreim, "curr_approved":approved, "pending_approved":pendapp, "working_balance":working, })
 
 def bal_adjustment_view(request, organization_slug):
     if request.method == "POST":
