@@ -12,3 +12,6 @@ class SpendingRequestReimForm(forms.Form):
 class BalAdjustmentForm(forms.Form):
     title = forms.CharField(max_length = 200)
     adjustment = forms.DecimalField(max_digits = 10, decimal_places= 2)
+
+class BalSetForm(forms.Form):
+    new_balance = forms.DecimalField(max_digits = 10, decimal_places= 2)

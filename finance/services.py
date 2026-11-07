@@ -67,13 +67,12 @@ def org_fin_view(*, actor, org):
 
     working = real - approved
 
-    ledgers = ledger_list(actor = actor, org = org)
-    
-    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved, "pending_approved": pendapp, "working_balance": working, "ledgers": ledgers}
+    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved, "pending_approved": pendapp, "working_balance": working}
 
 @transaction.atomic
 def bal_adjustment(*, actor, org, adjustment, title):
     required_role(actor, org, PERMISSIONS["bal.adjustment"])
+    Organization.objects.select_for_update().get(pk = org.pk)
     if adjustment == 0:
         raise ValidationError("Adjustment cannot be 0") 
     entry = LedgerEntry(
@@ -86,10 +85,27 @@ def bal_adjustment(*, actor, org, adjustment, title):
     entry.save()
     return entry
 
+BALANCE_ADJUSTMENT_TITLE = "Balance Reconciliation"
+@transaction.atomic
+def set_bal(*, actor, org, target):
+    required_role(actor, org, PERMISSIONS["bal.adjustment"])
+    Organization.objects.select_for_update().get(pk = org.pk)
+    real = true_bal(org)
+    entry = LedgerEntry(
+            organization = org,
+            done_by = actor,
+            cost = target-real,
+            title = BALANCE_ADJUSTMENT_TITLE,
+    )
+    entry.full_clean()
+    entry.save()
+    return entry
+
 #UPDATEDDDDDDD
 @transaction.atomic #makes sure the ledger and status change move together
 def request_complete(*, actor, request_id, org):
     required_role(actor, org, PERMISSIONS["request.complete"])
+    Organization.objects.select_for_update().get(pk = org.pk)
     try: 
         req = (SpendingReq.objects
            .select_for_update(of=("self",)) #locks the row so no one can change it

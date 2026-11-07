@@ -1,11 +1,11 @@
 from django.shortcuts import render
 from organizations.services import required_role
-from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment, ledger_list
+from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment, ledger_list, set_bal
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from django.core.exceptions import ValidationError,PermissionDenied
 from django.contrib import messages
-from finance.forms import SpendingRequestForm, SpendingRequestReimForm, BalAdjustmentForm
+from finance.forms import SpendingRequestForm, SpendingRequestReimForm, BalAdjustmentForm, BalSetForm
 from finance.models import SpendingReq
 
 # Create your views here.
@@ -17,6 +17,8 @@ def request_list(request, organization_slug):           # Django passes the slug
     if status not in VALID_STATUSES:
         status = "all"                          # your decision for bad filter values
     spending_reqs = list_requests(actor=request.user, org=request.org, status=status)
+    datadict = org_fin_view(actor = request.user, org = request.org)
+    working = datadict["working_balance"]
     pending_count = SpendingReq.objects.filter(
         organization=request.org, status=SpendingReq.Status.PENDING
     ).count()
@@ -28,6 +30,7 @@ def request_list(request, organization_slug):           # Django passes the slug
         "status_filter": status,
         "pending_count": pending_count,
         "submitted_count": submitted_count,
+        "working_balance": working,
     })
 
 def ledger_list_view(request, organization_slug):
@@ -115,13 +118,14 @@ def spending_request_reim(request, request_id, organization_slug):
 
 def org_overview(request, organization_slug):
     datadict = org_fin_view(actor = request.user, org = request.org)
+    ledgers = ledger_list(actor = request.user, org = request.org)
     real = datadict["true_balance"]
     pendreim = datadict["pending_reim"]
     approved = datadict["curr_approved"]
     pendapp = datadict["pending_approved"]
     working = datadict["working_balance"]
 
-    return render(request, "finance/overview.html", {"true_balance": real, "pending_reim": pendreim, "curr_approved":approved, "pending_approved":pendapp, "working_balance":working, })
+    return render(request, "finance/overview.html", {"true_balance": real, "pending_reim": pendreim, "curr_approved":approved, "pending_approved":pendapp, "working_balance":working, "ledgers": ledgers })
 
 def bal_adjustment_view(request, organization_slug):
     if request.method == "POST":
@@ -137,3 +141,18 @@ def bal_adjustment_view(request, organization_slug):
     else:
         form = BalAdjustmentForm()
     return render(request, "finance/bal_adjustment.html", {"form" : form})
+
+def bal_set_view(request, organization_slug):
+    if request.method == "POST":
+        form = BalSetForm(request.POST)
+        if form.is_valid():
+            try:
+                set_bal(actor = request.user, org = request.org, target = form.cleaned_data["new_balance"])
+            except ValidationError as e:
+                form.add_error(None, e.messages[0])
+            else:
+                messages.success(request, "Balance Set")
+                return redirect('org-fin-overview', organization_slug = organization_slug)
+    else:
+        form = BalSetForm()
+    return render(request, "finance/bal_set.html", {"form" : form})
