@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction History{% endblock %}
+
+{% block extra_head %}
+<style>
+  .req-wrap { display: flex; flex-direction: column; gap: 20px; }
+
+  .note {
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-left: 3px solid var(--accent-line);
+    padding: 12px 14px;
+    color: var(--type-secondary);
+  }
+  .note strong { color: var(--type-primary); font-weight: 600; }
+
+  .table-scroll { overflow-x: auto; }
+  .req-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 760px;
+  }
+  .req-table th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--type-secondary);
+    padding: 0 14px 10px;
+    border-bottom: 1.5px solid var(--surface-border);
+    white-space: nowrap;
+  }
+  .req-table td {
+    padding: 14px;
+    border-bottom: 1px solid var(--surface-border);
+    vertical-align: top;
+    color: var(--type-secondary);
+  }
+  .req-table tr:last-child td { border-bottom: none; }
+
+  .req-title { font-weight: 600; color: var(--type-primary); }
+  .req-person { font-size: 13px; }
+  .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--type-secondary); opacity: .7; }
+
+  .empty { text-align: center; padding: 44px 24px; }
+  .empty__title { font-size: 16px; margin-bottom: 6px; }
+  .empty__body { font-size: 14px; color: var(--type-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page__header">
+  <h1 class="page__title">Transaction History</h1>
+  <p class="page__description">
+    Every entry recorded for
+    {% if current_org %}{{ current_org.name }}{% else %}this organization{% endif %}, newest first.
+  </p>
+</div>
+
+<div class="req-wrap">
+
+  <p class="note">
+    <strong>Entries can't be edited or deleted.</strong>
+    Fix a mistake by recording the opposite amount in the overview.
+  </p>
+
+  <section class="card">
+    {% if ledgers %}
+      <div class="table-scroll">
+        <table class="req-table">
+          <thead>
+            <tr>
+              <th scope="col">Entry</th>
+              <th scope="col">Recorded By</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Linked Request</th>
+              <th scope="col">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in ledgers %}
+              <tr>
+                <td><span class="req-title">{{ r.title }}</span></td>
+
+                <td class="req-person">
+                  {{ r.done_by.get_full_name|default:r.done_by.username }}
+                </td>
+
+                <td class="num">${{ r.cost|floatformat:2 }}</td>
+
+                <td>
+                  {% if r.spending_req %}
+                    {{ r.spending_req.title }}
+                  {% else %}
+                    <span class="muted">&mdash;</span>
+                  {% endif %}
+                </td>
+
+                <td class="num">{{ r.created_at|date:"M j, Y" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <h2 class="empty__title">No ledger entries yet.</h2>
+        <p class="empty__body">Entries will appear here as spending requests are completed and adjustments are recorded.</p>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

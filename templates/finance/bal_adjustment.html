@@ -1,13 +1,147 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Balance adjustment #}
-{% block title %}Record dues or a correction{% endblock %}
+
+{% block title %}Deposits & Corrections{% endblock %}
+
+{% block extra_head %}
+<style>
+.form-wrap {
+  max-width: 560px;
+  margin: 8px auto 0;
+}
+
+.form-card { padding: 28px 28px 26px; }
+
+.form-card__title { font-size: 20px; }
+
+.form-card__hint {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--type-secondary);
+}
+
+.bal-form { margin-top: 22px; }
+
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  margin-bottom: 6px;
+}
+
+.field__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--type-primary);
+  background: var(--page-bg);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;
+  padding: 10px 12px;
+  transition: border-color .18s ease, background-color .25s ease;
+}
+.field__input:hover { border-color: var(--btn2-border); }
+.field__input:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.field__help {
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--type-secondary);
+  opacity: .85;
+}
+
+.errorlist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.errorlist li {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #EF4444;
+  padding: 8px 12px;
+}
+.field .errorlist { margin: 0 0 6px; }
+
+.note {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--accent-line);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  color: var(--type-secondary);
+}
+.note strong { color: var(--type-primary); font-weight: 600; }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.form-actions .btn { flex: 1; text-align: center; text-decoration: none; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h1>Record dues or a correction</h1>
-  <p>Enter a positive amount for money coming in, or a negative amount for money going out. Entries can't be edited later, so fix a mistake by recording the opposite amount.</p>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Record entry</button>
-  </form>
-  <p><a href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Back to overview</a></p>
+<div class="form-wrap">
+
+  <div class="page__header">
+    <h1 class="page__title">Deposits & Corrections</h1>
+    <p class="page__description">Record money coming in or going out of the organization's balance.</p>
+  </div>
+
+  <section class="card form-card">
+
+    <h2 class="form-card__title">Record an adjustment</h2>
+    <p class="form-card__hint">
+      Use a positive amount for money coming in, like dues. Use a negative amount for money going out, or a correction.
+    </p>
+
+    <p class="note" style="margin-top:18px;">
+      <strong>Entries can't be edited or deleted.</strong>
+      Fix a mistake by recording the opposite amount.
+    </p>
+
+    <!-- Form page: posts back to its own URL, so no action attribute -->
+    <form class="bal-form" method="post">
+      {% csrf_token %}
+
+      {{ form.non_field_errors }}
+
+      <div class="field">
+        <label class="field__label" for="{{ form.title.id_for_label }}">Title</label>
+        {{ form.title.errors }}
+        <input class="field__input" type="text"
+               name="title" id="{{ form.title.id_for_label }}"
+               value="{{ form.title.value|default_if_none:'' }}"
+               placeholder="e.g. Member dues, Venue refund" required>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="{{ form.adjustment.id_for_label }}">Adjustment amount ($)</label>
+        {{ form.adjustment.errors }}
+        <input class="field__input" type="number" step="0.01"
+               name="adjustment" id="{{ form.adjustment.id_for_label }}"
+               value="{{ form.adjustment.value|default_if_none:'' }}"
+               placeholder="e.g. 50.00 or -50.00" required>
+        <p class="field__help">Positive adds to the balance, negative subtracts. Zero isn't allowed.</p>
+      </div>
+
+      <div class="form-actions">
+        <a class="btn btn--secondary" href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Back to Overview</a>
+        <button type="submit" class="btn btn--primary">Record Adjustment</button>
+      </div>
+    </form>
+
+  </section>
+
+</div>
 {% endblock %}

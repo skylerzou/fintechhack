@@ -15,3 +15,6 @@ class BalAdjustmentForm(forms.Form):
 
 class BalSetForm(forms.Form):
     new_balance = forms.DecimalField(max_digits = 10, decimal_places= 2)
+
+class ReimChalForm(forms.Form):
+    reimamount = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.00")) #just cant be negative

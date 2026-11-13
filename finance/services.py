@@ -66,8 +66,19 @@ def org_fin_view(*, actor, org):
     approved = approved_spend(org) #total of all approved spend (approved reqs and submitted reimbursement)
 
     working = real - approved
+    points = _ledger_series(org)
 
-    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved, "pending_approved": pendapp, "working_balance": working}
+    return {"true_balance": real,"pending_reim": pendreim, "curr_approved": approved, "pending_approved": pendapp, "working_balance": working, "points": points}
+
+def _ledger_series(org):
+    running = Decimal("0")
+    by_month = {}
+    for r in LedgerEntry.objects.filter(organization=org).order_by("created_at"):
+        running += r.cost
+        key = timezone.localtime(r.created_at).strftime("%Y-%m")
+        by_month[key] = float(running)
+    return [{"month": k, "total": v} for k, v in by_month.items()]
+
 
 @transaction.atomic
 def bal_adjustment(*, actor, org, adjustment, title):
@@ -133,6 +144,36 @@ def request_complete(*, actor, request_id, org):
     entry.full_clean()
     entry.save()
     return entry
+
+# @transaction.atomic
+# def reim_challenge(*, actor, request_id, org, newreim):
+#     required_role(actor, org, PERMISSIONS["request.complete"])
+#     Organization.objects.select_for_update().get(pk = org.pk)
+#     try: 
+#         req = (SpendingReq.objects
+#             .select_for_update(of=("self",)) #locks the row so no one can change it
+#             .get(pk = request_id, organization = org))
+#     except SpendingReq.DoesNotExist:
+#         raise PermissionDenied
+#     if req.status != SpendingReq.Status.SUBMITTED:
+#         raise ValidationError("Only submitted requests can be completed")
+#     if newreim is None or newreim <= 0:
+#         raise ValidationError("Reimbursement amount must be positive")
+
+#     req.status = SpendingReq.Status.COMPLETED
+#     req.completed_at = timezone.now()
+#     req.completed_by = actor
+#     req.save(update_fields=["status", "completed_at", "completed_by"])
+#     entry = LedgerEntry(
+#             organization = org,
+#             done_by = actor,
+#             spending_req = req,
+#             cost = -newreim,
+#             title = f"{req.title}: paid ${newreim} (claimed ${req.reimamount})",
+#         )
+#     entry.full_clean()
+#     entry.save()
+#     return entry
 
 
 @transaction.atomic
@@ -205,6 +246,7 @@ def request_reim(*, actor, request_id, org, reimamount):
     req.save(update_fields=["status", "reimamount", "over_budget"])
     return req
 
+
 def get_own_request(*, actor, org, request_id):
     required_role(actor, org, PERMISSIONS["view.requests.personal"])
     try:
@@ -235,4 +277,10 @@ def ledger_list(*, actor, org):
     required_role(actor, org, PERMISSIONS["view.ledger"])
     ledgers = LedgerEntry.objects.filter(organization = org)
     return ledgers.select_related("done_by").order_by("-created_at")
-    
+
+def count_pending(*, actor, org):
+    required_role(actor, org, PERMISSIONS["view.requests.org"])
+    pending_count = SpendingReq.objects.filter(organization = org, status = SpendingReq.Status.PENDING).count()
+    waiting_reim_count = SpendingReq.objects.filter(organization = org, status = SpendingReq.Status.SUBMITTED).count()
+    total_count = pending_count+waiting_reim_count
+    return total_count

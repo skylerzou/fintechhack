@@ -135,7 +135,7 @@
   gap: 10px;
   margin-top: 4px;
 }
-.form-actions .btn { flex: 1; }
+.form-actions .btn { flex: 1; text-align: center; text-decoration: none; }
 </style>
 {% endblock %}
 
@@ -143,7 +143,7 @@
 <div class="form-wrap">
 
   <div class="page__header">
-    <h1 class="page__title">Overspend limit</h1>
+    <h1 class="page__title">Overspend Limit</h1>
     <p class="page__description">
       {% if current_org %}Set the overspend allowance for {{ current_org.name }}.{% endif %}
     </p>
@@ -187,11 +187,10 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn btn--primary">Save limit</button>
         {% if current_org %}
-        <a class="btn btn--secondary" href="{% url 'org-fin-overview' organization_slug=current_org.slug %}"
-           style="text-align:center; text-decoration:none;">Cancel</a>
+        <a class="btn btn--secondary" href="{% url 'org-fin-overview' organization_slug=current_org.slug %}">Cancel</a>
         {% endif %}
+        <button type="submit" class="btn btn--primary">Save limit</button>
       </div>
     </form>
 

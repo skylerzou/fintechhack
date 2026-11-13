@@ -2,6 +2,12 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+<script>
+  (function() {
+    var saved = localStorage.getItem('santumbral-theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+  })();
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{% block title %}{% endblock %} — Santumbral</title>
@@ -43,6 +49,9 @@
 
   --accent-line:    #10B981;                      /* Banner underline               */
   --focus-ring:     rgba(16, 185, 129, 0.45);
+
+  --danger:         #DC2626;                      /* Action-needed red (4.8:1 w/ white) */
+  --danger-text:    #FFFFFF;
 }
 
 :root[data-theme="dark"] {
@@ -71,6 +80,9 @@
 
   --accent-line:    #10B981;
   --focus-ring:     rgba(56, 189, 248, 0.5);
+
+  --danger:         #DC2626;
+  --danger-text:    #FFFFFF;
 }
 
 :root {
@@ -138,6 +150,7 @@ p { margin: 0; }
 
 /* --- Sidebar toggle --- */
 .sidebar-toggle {
+  flex: 0 0 38px;
   width: 38px;
   height: 38px;
   display: grid;
@@ -374,6 +387,61 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
 }
 
 /* ============================================================
+   NAV BADGE (pending count)
+   ============================================================ */
+
+.nav-link { position: relative; }        /* anchor for collapsed badge */
+
+.nav-badge-slot {
+  margin-left: auto;                     /* push to right edge of row */
+  display: flex;
+}
+
+.nav-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--danger-text);
+  background: var(--danger);
+  border-radius: 0;                      /* match square-corner system */
+}
+
+/* Collapsed sidebar (desktop only): small badge on the icon's corner.
+   (width > 720px) is the exact complement of the mobile breakpoint,
+   where the collapsed class means "drawer open" instead. */
+@media (width > 720px) {
+  body.sidebar-collapsed .nav-badge-slot {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 3px);
+    margin-left: 0;
+  }
+  body.sidebar-collapsed .nav-badge {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ============================================================
    LAYOUT + SURFACES
    ============================================================ */
 
@@ -459,7 +527,7 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
 <header class="banner">
   <div class="banner__inner">
 
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" aria-expanded="true" aria-controls="sidebar">
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation" aria-expanded="true" aria-controls="sidebar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M3 6h18M3 12h18M3 18h18"/>
       </svg>
@@ -531,14 +599,14 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>
             </svg>
-            <span class="nav-link__text">My requests</span>
+            <span class="nav-link__text">My Requests</span>
           </a>
 
           <a class="nav-link" href="{% url 'request-create' organization_slug=current_org.slug %}" title="New request">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <path d="M12 5v14M5 12h14"/>
             </svg>
-            <span class="nav-link__text">New request</span>
+            <span class="nav-link__text">New Request</span>
           </a>
 
           <!-- Treasurer and president -->
@@ -547,7 +615,11 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
               </svg>
-              <span class="nav-link__text">All requests</span>
+              <span class="nav-link__text">All Requests</span>
+              <span class="nav-badge-slot"
+                    hx-get="{% url 'pending-badge' organization_slug=current_org.slug %}"
+                    hx-trigger="load, every 15s"
+                    hx-swap="innerHTML"></span>
             </a>
 
             <a class="nav-link" href="{% url 'org-fin-overview' organization_slug=current_org.slug %}" title="Overview">
@@ -555,6 +627,13 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
                 <path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
               </svg>
               <span class="nav-link__text">Overview</span>
+            </a>
+
+            <a class="nav-link" href="{% url 'ledger-list' organization_slug=current_org.slug %}" title="Transaction history">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+              </svg>
+              <span class="nav-link__text">Transaction History</span>
             </a>
           {% endif %}
 
@@ -579,21 +658,21 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M10 21v-6h4v6"/>
           </svg>
-          <span class="nav-link__text">Your orgs</span>
+          <span class="nav-link__text">Your Orgs</span>
         </a>
 
         <a class="nav-link" href="{% url 'join' %}" title="Join an org">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>
           </svg>
-          <span class="nav-link__text">Join an org</span>
+          <span class="nav-link__text">Join Org</span>
         </a>
 
         <a class="nav-link" href="{% url 'org-create' %}" title="Create an org">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 21h18"/><path d="M5 21V8l6-3 6 3v13"/><path d="M11 12h4M13 10v4"/>
           </svg>
-          <span class="nav-link__text">Create an org</span>
+          <span class="nav-link__text">Create Org</span>
         </a>
 
         <!-- Log out must be a POST form, never a plain link -->
@@ -603,7 +682,7 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
             </svg>
-            <span class="nav-link__text">Log out</span>
+            <span class="nav-link__text">Log Out</span>
           </button>
         </form>
       </div>
@@ -650,34 +729,42 @@ body.sidebar-collapsed .nav-group { margin-bottom: 10px; }
 </div>
 
 <!-- ===== SHARED JS (loads outside blocks — pages cannot remove it) ===== -->
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
 <script>
-  const root = document.documentElement;
-  const saved = localStorage.getItem('santumbral-theme');
-  if (saved) root.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', function () {
+    const root = document.documentElement;
 
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-    root.setAttribute('data-theme', next);
-    localStorage.setItem('santumbral-theme', next);
-  });
-
-  const sidebarToggle = document.getElementById('sidebar-toggle');
-  if (localStorage.getItem('santumbral-sidebar') === 'collapsed') {
-    document.body.classList.add('sidebar-collapsed');
-    sidebarToggle.setAttribute('aria-expanded', 'false');
-  }
-
-  sidebarToggle.addEventListener('click', () => {
-    const collapsed = document.body.classList.toggle('sidebar-collapsed');
-    sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
-    localStorage.setItem('santumbral-sidebar', collapsed ? 'collapsed' : 'expanded');
-  });
-
-  // Mark the current page in the sidebar
-  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-    if (link.getAttribute('href') === window.location.pathname) {
-      link.setAttribute('aria-current', 'page');
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        root.setAttribute('data-theme', next);
+        localStorage.setItem('santumbral-theme', next);
+      });
     }
+
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+      if (localStorage.getItem('santumbral-sidebar') === 'collapsed') {
+        document.body.classList.add('sidebar-collapsed');
+        sidebarToggle.setAttribute('aria-expanded', 'false');
+      } else {
+        sidebarToggle.setAttribute('aria-expanded', 'true');
+      }
+
+      sidebarToggle.addEventListener('click', () => {
+        const collapsed = document.body.classList.toggle('sidebar-collapsed');
+        sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+        localStorage.setItem('santumbral-sidebar', collapsed ? 'collapsed' : 'expanded');
+      });
+    }
+
+    // Mark the current page in the sidebar
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+      if (link.getAttribute('href') === window.location.pathname) {
+        link.setAttribute('aria-current', 'page');
+      }
+    });
   });
 </script>
 

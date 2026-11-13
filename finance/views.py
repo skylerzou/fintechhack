@@ -1,11 +1,11 @@
 from django.shortcuts import render
 from organizations.services import required_role
-from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment, ledger_list, set_bal
+from finance.services import PERMISSIONS,list_requests, list_personal, org_fin_view, request_complete, request_approve, request_deny, request_spending, request_reim, get_own_request, bal_adjustment, ledger_list, set_bal, count_pending
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from django.core.exceptions import ValidationError,PermissionDenied
 from django.contrib import messages
-from finance.forms import SpendingRequestForm, SpendingRequestReimForm, BalAdjustmentForm, BalSetForm
+from finance.forms import SpendingRequestForm, SpendingRequestReimForm, BalAdjustmentForm, BalSetForm, ReimChalForm
 from finance.models import SpendingReq
 
 # Create your views here.
@@ -118,14 +118,14 @@ def spending_request_reim(request, request_id, organization_slug):
 
 def org_overview(request, organization_slug):
     datadict = org_fin_view(actor = request.user, org = request.org)
-    ledgers = ledger_list(actor = request.user, org = request.org)
     real = datadict["true_balance"]
     pendreim = datadict["pending_reim"]
     approved = datadict["curr_approved"]
     pendapp = datadict["pending_approved"]
     working = datadict["working_balance"]
+    points = datadict["points"]
 
-    return render(request, "finance/overview.html", {"true_balance": real, "pending_reim": pendreim, "curr_approved":approved, "pending_approved":pendapp, "working_balance":working, "ledgers": ledgers })
+    return render(request, "finance/overview.html", {"true_balance": real, "pending_reim": pendreim, "curr_approved":approved, "pending_approved":pendapp, "working_balance":working, "points": points })
 
 def bal_adjustment_view(request, organization_slug):
     if request.method == "POST":
@@ -156,3 +156,22 @@ def bal_set_view(request, organization_slug):
     else:
         form = BalSetForm()
     return render(request, "finance/bal_set.html", {"form" : form})
+
+def pending_badge(request, organization_slug):
+    count = count_pending(actor=request.user, org = request.org)
+    return render(request, "finance/_pending_badge.html", {"count": count})
+
+# def request_chal_view(request, request_id, organization_slug):
+#     if request.method == "POST":
+#         form = ReimChalForm(request.POST)
+#         if form.is_valid():
+#             try:
+#                 reim_challenge(actor = request.user, org = request.org, newreim = form.cleaned_data["reimamount"], request_id=request_id)
+#             except ValidationError as e:
+#                 form.add_error(None, e.messages[0])
+#             else:
+#                 messages.success(request, "Reimbursement Challenged")
+#                 return redirect("request-list", organization_slug = organization_slug)
+#     else:
+#         form = ReimChalForm()
+#     return render(request, "finance/request_chal.html", {"form": form})

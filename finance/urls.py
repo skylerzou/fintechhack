@@ -13,5 +13,7 @@ urlpatterns = [
     path('requests/mine/create/', views.spending_request_new, name = 'request-create'),
     path('overview/bal-adjustment/', views.bal_adjustment_view, name = 'bal-adjustment'),
     path('ledger-list/', views.ledger_list_view, name = 'ledger-list'),
-    path('overview/bal-set/', views.bal_set_view, name = 'bal-set')
+    path('overview/bal-set/', views.bal_set_view, name = 'bal-set'),
+    path('requests/pending-badge/', views.pending_badge, name = 'pending-badge'),
+    #path('requests/<int:request_id>/challenge/', views.request_chal_view, name = 'request-challenge'), 
 ]

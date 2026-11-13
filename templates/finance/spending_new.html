@@ -1,102 +1,153 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block title %}New Spending Request{% endblock %}
+
+{% block extra_head %}
 <style>
-    .spending-new-wrap {
-        display: flex;
-        gap: 2rem;
-        align-items: flex-start;
-    }
-    .spending-new-sidebar {
-        flex: 0 0 340px;
-        border-right: 1px solid var(--color-border, #ddd);
-        padding-right: 1.5rem;
-    }
-    .spending-new-sidebar h2 {
-        white-space: nowrap;
-    }
-    .spending-new-form {
-        flex: 1;
-        max-width: 520px;
-    }
-    .spending-new-form label {
-        display: block;
-        font-weight: 600;
-        margin-top: 1.25rem;
-        margin-bottom: 0.4rem;
-    }
-    .spending-new-form input[type="text"],
-    .spending-new-form input[type="number"] {
-        width: 100%;
-        padding: 0.6rem;
-        box-sizing: border-box;
-        background-color: var(--color-bg, #fff);
-        color: var(--color-text, #222);
-        border: 1px solid var(--color-border, #ccc);
-    }
-    .spending-new-form input[type="text"]::placeholder,
-    .spending-new-form input[type="number"]::placeholder {
-        color: var(--color-text-muted, #888);
-    }
-    .spending-new-form input[type="text"]:focus,
-    .spending-new-form input[type="number"]:focus {
-        outline: none;
-        border-color: var(--color-accent, #555);
-    }
-    .spending-new-actions {
-        margin-top: 2.5rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-    .btn {
-        display: inline-block;
-        padding: 0.6rem 1.2rem;
-        text-decoration: none;
-        border-radius: 4px;
-        border: 1px solid var(--color-border, #333);
-        cursor: pointer;
-        white-space: nowrap;
-    }
-    .btn-secondary {
-        background: var(--color-bg, #fff);
-        color: var(--color-text, #333);
-    }
-    .btn-primary {
-        background: var(--color-text, #222);
-        color: var(--color-bg, #fff);
-    }
+/* ============================================================
+   NEW SPENDING REQUEST — page-only styling (adds to shared CSS)
+   ============================================================ */
+
+.form-wrap {
+  max-width: 560px;
+  margin: 8px auto 0;
+}
+
+.form-card { padding: 28px 28px 26px; }
+
+.form-card__title { font-size: 20px; }
+
+.form-card__hint {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--type-secondary);
+}
+
+.spending-form { margin-top: 22px; }
+
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  margin-bottom: 6px;
+}
+
+.field__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--type-primary);
+  background: var(--page-bg);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;                 /* square corners */
+  padding: 10px 12px;
+  transition: border-color .18s ease, background-color .25s ease;
+  box-sizing: border-box;
+}
+.field__input::placeholder { color: var(--type-secondary); opacity: .7; }
+.field__input:hover { border-color: var(--btn2-border); }
+.field__input:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.field__help {
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--type-secondary);
+  opacity: .85;
+}
+
+/* Form errors — rendered from the form object, not from messages */
+.errorlist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.errorlist li {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #EF4444;
+  padding: 8px 12px;
+}
+.field .errorlist { margin: 0 0 6px; }
+
+/* Reimbursement policy note */
+.note {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--accent-line);
+  padding: 12px 14px;
+  margin-top: 18px;
+  margin-bottom: 20px;
+  color: var(--type-secondary);
+}
+.note strong { color: var(--type-primary); font-weight: 600; }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.form-actions .btn { flex: 1; }
 </style>
-<div class="spending-new-wrap">
-    <aside class="spending-new-sidebar">
-        <h2>Submit Spending Request</h2>
-        <p class="reimbursement-policy">
-            <strong>Reimbursement policy:</strong>
-            Once approved, you may complete the purchase and submit your final
-            receipt total.
-        </p>
-    </aside>
-
-    <section class="spending-new-form">
-        <form method="post">
-            {% csrf_token %}
-            {{ form.non_field_errors }}
-
-            <label for="{{ form.title.id_for_label }}">Title</label>
-            {{ form.title }}
-            {{ form.title.errors }}
-
-            <label for="{{ form.spend.id_for_label }}">Requested Amount</label>
-            {{ form.spend }}
-            {{ form.spend.errors }}
-
-            <div class="spending-new-actions">
-                <a href="{% url 'request-list' organization_slug=current_org.slug %}" class="btn btn-secondary">Back to My Requests</a>
-                <button type="submit" class="btn btn-primary">Submit Request</button>
-            </div>
-        </form>
-    </section>
-</div>
 {% endblock %}
 
+{% block content %}
+<div class="form-wrap">
 
+  <div class="page__header">
+    <h1 class="page__title">Submit Spending Request</h1>
+    <p class="page__description">Request approval before making a purchase on behalf of your organization.</p>
+  </div>
+
+  <section class="card form-card">
+
+    <h2 class="form-card__title">Request details</h2>
+
+    <p class="note">
+      <strong>Reimbursement policy:</strong>
+      Once approved, you may complete the purchase and submit your final receipt total.
+    </p>
+
+    <!-- Form page: posts back to its own URL, so no action attribute -->
+    <form class="spending-form" method="post">
+      {% csrf_token %}
+
+      {{ form.non_field_errors }}
+
+      <div class="field">
+        <label class="field__label" for="{{ form.title.id_for_label }}">Title</label>
+        {{ form.title.errors }}
+        <input class="field__input" type="text" name="title" id="{{ form.title.id_for_label }}"
+               value="{{ form.title.value|default_if_none:'' }}"
+               placeholder="e.g. Catering for meeting" autofocus required>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="{{ form.spend.id_for_label }}">Requested Amount ($)</label>
+        {{ form.spend.errors }}
+        <input class="field__input" type="number" step="0.01" min="0.01"
+               name="spend" id="{{ form.spend.id_for_label }}"
+               value="{{ form.spend.value|default_if_none:'' }}"
+               placeholder="0.00" required>
+        <p class="field__help">Must be more than $0.00.</p>
+      </div>
+
+      <div class="form-actions">
+        <a class="btn btn--secondary" href="{% url 'request-list-mine' organization_slug=current_org.slug %}"
+           style="text-align:center; text-decoration:none;">Back to My Requests</a>
+        <button type="submit" class="btn btn--primary">Submit Request</button>
+      </div>
+    </form>
+
+  </section>
+
+</div>
+{% endblock %}

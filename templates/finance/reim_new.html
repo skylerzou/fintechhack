@@ -1,21 +1,230 @@
 {% extends "base.html" %}
-{# STUB: replace with the real page. Contract: Pages > Request reimbursement #}
-{% block title %}Request reimbursement{% endblock %}
-{% block content %}
-  <h1>Request reimbursement</h1>
-  <p>Request: {{ req.title }}</p>
-  <p>Approved amount: ${{ req.spend|floatformat:2 }}</p>
-  <p>Status: {{ req.get_status_display }}</p>
 
-  {% if req.status == "approved" %}
-    <p>Amounts above the approved amount plus your organization's overspend limit are allowed, but flagged for the treasurer.</p>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Request reimbursement</button>
-    </form>
-  {% else %}
-    <p>Only approved requests can be reimbursed.</p>
-  {% endif %}
-  <p><a href="{% url 'request-list-mine' organization_slug=current_org.slug %}">Back to my requests</a></p>
+{% block title %}Request Reimbursement{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ============================================================
+   REQUEST REIMBURSEMENT — page-only styling (adds to shared CSS)
+   ============================================================ */
+
+.form-wrap {
+  max-width: 560px;
+  margin: 8px auto 0;
+}
+
+.form-card { padding: 28px 28px 26px; }
+
+.form-card__title { font-size: 20px; }
+
+.form-card__hint {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--type-secondary);
+}
+
+.reim-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 18px;
+  margin-top: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1.5px solid var(--surface-border);
+}
+.reim-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.reim-summary__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+}
+.reim-summary__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--type-primary);
+}
+.reim-summary__value {
+  font-size: 14px;
+  color: var(--type-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tag {
+  display: inline-block;
+  width: 148px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 4px 10px;
+  border: 1.5px solid var(--surface-border);
+  color: var(--type-primary);
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.tag--pending   { border-color: var(--btn2-border); color: var(--btn2-text); }
+.tag--approved  { border-color: var(--cta-bg); color: var(--cta-bg); }
+.tag--denied    { border-color: #EF4444; color: #EF4444; }
+.tag--submitted { border-color: var(--chart-line); color: var(--chart-line); }
+.tag--completed { border-color: var(--cta-bg); color: var(--cta-bg); }
+
+.reim-form { margin-top: 22px; }
+
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--type-secondary);
+  margin-bottom: 6px;
+}
+
+.field__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--type-primary);
+  background: var(--page-bg);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 0;                 /* square corners */
+  padding: 10px 12px;
+  transition: border-color .18s ease, background-color .25s ease;
+  box-sizing: border-box;
+}
+.field__input::placeholder { color: var(--type-secondary); opacity: .7; }
+.field__input:hover { border-color: var(--btn2-border); }
+.field__input:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.field__help {
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--type-secondary);
+  opacity: .85;
+}
+
+/* Form errors — rendered from the form object, not from messages */
+.errorlist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.errorlist li {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--type-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #EF4444;
+  padding: 8px 12px;
+}
+.field .errorlist { margin: 0 0 6px; }
+
+/* Reimbursement policy / overspend note */
+.note {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--accent-line);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  color: var(--type-secondary);
+}
+.note strong { color: var(--type-primary); font-weight: 600; }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.form-actions .btn { flex: 1; }
+
+.empty-state {
+  text-align: center;
+  padding: 36px 20px;
+}
+.empty-state__title { font-size: 16px; margin-bottom: 8px; color: var(--type-primary); }
+.empty-state__body { font-size: 14px; color: var(--type-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-wrap">
+
+  <div class="page__header">
+    <h1 class="page__title">Request Reimbursement</h1>
+    <p class="page__description">Submit your final receipt total for an approved spending request.</p>
+  </div>
+
+  <section class="card form-card">
+
+    <h2 class="form-card__title">{{ req.title }}</h2>
+    <p class="form-card__hint">Review the approved amount below before submitting your final total.</p>
+
+    <div class="reim-summary">
+      <div class="reim-summary__row">
+        <span class="reim-summary__label">Status</span>
+        <span class="tag tag--{{ req.status }}">{{ req.get_status_display }}</span>
+      </div>
+      <div class="reim-summary__row">
+        <span class="reim-summary__label">Approved Amount</span>
+        <span class="reim-summary__value">${{ req.spend|floatformat:2 }}</span>
+      </div>
+    </div>
+
+    {% if req.status == "approved" %}
+      <p class="note">
+        Amounts above the approved amount plus the organization's overspend limit are allowed,
+        but will be flagged for the <strong>treasurer</strong>.
+      </p>
+
+      <!-- Form page: posts back to its own URL, so no action attribute -->
+      <form class="reim-form" method="post">
+        {% csrf_token %}
+
+        {{ form.non_field_errors }}
+
+        <div class="field">
+          <label class="field__label" for="{{ form.reimamount.id_for_label }}">Final reimbursement amount ($)</label>
+          {{ form.reimamount.errors }}
+          <input class="field__input" type="number" step="0.01" min="0.01"
+                 name="reimamount" id="{{ form.reimamount.id_for_label }}"
+                 value="{{ form.reimamount.value|default_if_none:'' }}"
+                 autofocus required>
+          <p class="field__help">Enter your final receipt total. Must be more than $0.00.</p>
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn--secondary" href="{% url 'request-list-mine' organization_slug=current_org.slug %}"
+             style="text-align:center; text-decoration:none;">Back to My Requests</a>
+          <button type="submit" class="btn btn--primary">Submit Reimbursement</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="empty-state">
+        <h2 class="empty-state__title">This request can't be reimbursed right now.</h2>
+        <p class="empty-state__body">
+          Only approved requests can submit for reimbursement. This request's current status is
+          <strong>{{ req.get_status_display }}</strong>.
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <a class="btn btn--secondary" href="{% url 'request-list-mine' organization_slug=current_org.slug %}"
+           style="text-align:center; text-decoration:none;">Back to My Requests</a>
+      </div>
+    {% endif %}
+
+  </section>
+
+</div>
 {% endblock %}

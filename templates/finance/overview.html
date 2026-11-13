@@ -29,7 +29,6 @@
   }
   .balance { display: flex; flex-direction: column; gap: 6px; }
   .balance__label { font-size: 16px; font-weight: 600; color: var(--type-primary); }
-  .balance__hint { font-size: 13px; color: var(--type-secondary); }
   .balance__amt {
     margin-top: auto;
     padding-top: 16px;
@@ -41,22 +40,29 @@
     overflow-wrap: anywhere;
   }
   .balance__amt.is-negative { color: var(--alert); }
-  .balance .tag { margin-left: 8px; vertical-align: middle; }
-
-  /* Breakdown inside the Committed card */
-  .breakdown { margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
-  .breakdown div { display: flex; justify-content: space-between; gap: 12px; }
-  .breakdown dt, .breakdown dd { margin: 0; font-size: 13px; color: var(--type-secondary); }
-  .breakdown dd { font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-  /* Overspend limit */
+  .balance .tag--alert {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--alert);
+  font-size: 14px;
+  font-weight: 600;
+}
+  /* Overspend limit bar — full width rectangle beneath the balance boxes */
   .overspend {
     max-width: 1000px;
-    margin: 28px auto 0;
+    margin: 20px auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
   }
+  .overspend__info { display: flex; flex-direction: column; gap: 6px; }
+  .overspend__label { font-size: 16px; font-weight: 600; color: var(--type-primary); }
   .overspend__figure {
-    margin: 4px 0;
-    font-size: 22px;
+    margin: 0;
+    font-size: 25px;
     font-weight: 700;
     color: var(--type-primary);
     font-variant-numeric: tabular-nums;
@@ -67,7 +73,23 @@
   }
   @media (max-width: 480px) {
     .balance__amt { font-size: 28px; }
+    .overspend { flex-direction: column; align-items: flex-start; }
   }
+
+  /* Balance-by-month chart — full width rectangle beneath the overspend bar */
+  .trend-chart {
+    max-width: 1000px;
+    margin: 20px auto 0;
+  }
+  .trend-chart__title { font-size: 16px; font-weight: 600; color: var(--type-primary); }
+  .trend-chart__wrap { margin-top: 16px; }
+  .trend-chart canvas {
+    width: 100%;
+    height: 280px;
+    display: block;
+    touch-action: pan-y;          /* page still scrolls; horizontal drag scrubs months */
+  }
+  .trend-chart__empty { font-size: 14px; color: var(--type-secondary); padding: 24px 0; text-align: center; }
 </style>
 {% endblock %}
 
@@ -78,46 +100,258 @@
     <p class="page__description">Updates as requests are approved, reimbursed, and paid out.</p>
   </div>
   <div class="overview-actions">
-    <a class="btn btn--primary" href="{% url 'bal-adjustment' organization_slug=current_org.slug %}">Record dues or a correction</a>
-    <a class="btn btn--secondary" href="{% url 'request-list' organization_slug=current_org.slug %}">All requests</a>
+    <a class="btn btn--primary" href="{% url 'bal-set' organization_slug=current_org.slug %}">Reconciliation</a>
+    <a class="btn btn--primary" href="{% url 'bal-adjustment' organization_slug=current_org.slug %}">Deposits &amp; Corrections</a>
+    <a class="btn btn--primary" href="{% url 'request-list' organization_slug=current_org.slug %}">All Requests</a>
   </div>
 </div>
 
 <div class="balances">
 
   <section class="card balance" aria-labelledby="true-title">
-    <h2 class="balance__label" id="true-title">True balance</h2>
-    <p class="balance__hint">Every ledger entry added up: dues and corrections in, paid reimbursements out.</p>
+    <h2 class="balance__label" id="true-title">True Balance</h2>
     <p class="balance__amt{% if true_balance < 0 %} is-negative{% endif %}">{% if true_balance < 0 %}-${{ true_balance|floatformat:2|cut:"-" }}{% else %}${{ true_balance|floatformat:2 }}{% endif %}</p>
   </section>
 
   <section class="card balance" aria-labelledby="committed-title">
     <h2 class="balance__label" id="committed-title">Committed</h2>
-    <p class="balance__hint">Money already promised to members.</p>
-    <dl class="breakdown">
-      <div>
-        <dt>Approved, reimbursement not requested yet</dt>
-        <dd>${{ pending_approved|floatformat:2 }}</dd>
-      </div>
-      <div>
-        <dt>Reimbursement requested, not paid yet</dt>
-        <dd>${{ pending_reim|floatformat:2 }}</dd>
-      </div>
-    </dl>
     <p class="balance__amt">${{ curr_approved|floatformat:2 }}</p>
   </section>
 
   <section class="card balance" aria-labelledby="working-title">
-    <h2 class="balance__label" id="working-title">Working balance{% if working_balance < 0 %}<span class="tag tag--alert">Overcommitted</span>{% endif %}</h2>
-    <p class="balance__hint">What's left to approve new spending.</p>
+    <h2 class="balance__label" id="working-title">Working Balance</h2>
+    {% if working_balance < 0 %}<p class="tag--alert">Overcommitted</p>{% endif %}
     <p class="balance__amt{% if working_balance < 0 %} is-negative{% endif %}">{% if working_balance < 0 %}-${{ working_balance|floatformat:2|cut:"-" }}{% else %}${{ working_balance|floatformat:2 }}{% endif %}</p>
   </section>
 
 </div>
 
-<section class="overspend" aria-labelledby="overspend-title">
-  <h2 class="card__title" id="overspend-title">Overspend limit</h2>
-  <p class="overspend__figure">${{ current_org.overspend_limit|floatformat:2 }}</p>
-  <p><a href="{% url 'overspend-adjust' organization_slug=current_org.slug %}">Change the overspend limit</a></p>
+<section class="card overspend" aria-labelledby="overspend-title">
+  <div class="overspend__info">
+    <h2 class="overspend__label" id="overspend-title">Overspend Limit</h2>
+    <p class="overspend__figure">${{ current_org.overspend_limit|floatformat:2 }}</p>
+  </div>
+  <a class="btn btn--secondary" href="{% url 'overspend-adjust' organization_slug=current_org.slug %}">Set Limit</a>
 </section>
+
+<section class="card trend-chart" aria-labelledby="trend-chart-title">
+  <h2 class="trend-chart__title" id="trend-chart-title">Balance by Month</h2>
+  <div class="trend-chart__wrap">
+    {% if points %}
+      <canvas id="trend-chart-canvas" role="img" aria-label="Bar chart of the true balance at the end of each month"></canvas>
+      {{ points|json_script:"balance-points" }}
+    {% else %}
+      <p class="trend-chart__empty">No history yet. The graph appears once dues or a paid reimbursement is recorded.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const dataEl = document.getElementById('balance-points');
+  const canvas = document.getElementById('trend-chart-canvas');
+  if (!dataEl || !canvas) return;
+
+  // Same `points` the old Chart.js graph used: true balance at the end of each month.
+  // [{"month": "2026-01", "total": "540.00"}, ...]
+  // json_script serializes Decimal as a string, so totals are coerced with Number().
+  const raw = JSON.parse(dataEl.textContent);
+  if (!Array.isArray(raw) || raw.length === 0) return;
+
+  const data = raw.map(p => ({ label: monthLabel(p.month), total: Number(p.total) || 0 }));
+
+  // "2026-01" -> "Jan 2026" (built from parts, so no time-zone shift)
+  function monthLabel(ym) {
+    const [y, m] = String(ym).split('-').map(Number);
+    if (!y || !m) return String(ym);
+    return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  }
+
+  // -$1,234.56 style, matching the balance cards. Values that round to zero get no sign.
+  function money(v, digits) {
+    const abs = Math.abs(v).toLocaleString('en-US', {
+      minimumFractionDigits: digits, maximumFractionDigits: digits
+    });
+    const neg = v < 0 && Math.abs(v) >= 0.5 * Math.pow(10, -digits);
+    return (neg ? '-$' : '$') + abs;
+  }
+
+  // Round axis range out to 1/2/5 x 10^k steps, always including zero,
+  // with the same 15% headroom the original chart used.
+  function niceScale(values) {
+    let lo = Math.min(0, ...values);
+    let hi = Math.max(0, ...values);
+    if (lo === hi) hi = 1;                       // every month is exactly $0
+    lo *= 1.15;
+    hi *= 1.15;
+    const rawStep = (hi - lo) / 4;
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const norm = rawStep / mag;
+    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    return { min: Math.floor(lo / step) * step, max: Math.ceil(hi / step) * step, step };
+  }
+
+  let hoverIndex = -1;
+  let layout = null;
+
+  function draw() {
+    // Read tokens on every draw so the chart follows the theme toggle
+    const styles = getComputedStyle(document.documentElement);
+    const token = name => styles.getPropertyValue(name).trim();
+    const barColor = token('--chart-bar');
+    const lineColor = token('--chart-line');
+    const pointColor = token('--chart-point');
+    const gridColor = token('--chart-grid');
+    const glow = token('--chart-glow');
+    const textColor = token('--type-secondary');
+
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.clientWidth;
+    const cssHeight = 280;
+    if (cssWidth === 0) { layout = null; return; }
+    canvas.width = Math.round(cssWidth * dpr);
+    canvas.height = Math.round(cssHeight * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+    ctx.font = '11px Arial, sans-serif';
+
+    const scale = niceScale(data.map(d => d.total));
+    const tickDigits = scale.step < 1 ? 2 : 0;
+    const tickCount = Math.round((scale.max - scale.min) / scale.step);
+    const ticks = [];
+    for (let i = 0; i <= tickCount; i++) ticks.push(scale.min + i * scale.step);
+    const tickLabels = ticks.map(t => money(t, tickDigits));
+    const yLabelW = Math.max(...tickLabels.map(s => ctx.measureText(s).width));
+
+    // Left padding fits the widest y label, so "-$12,000" never clips
+    const padding = { top: 28, right: 16, bottom: 32, left: Math.ceil(yLabelW) + 14 };
+    const chartW = cssWidth - padding.left - padding.right;
+    const chartH = cssHeight - padding.top - padding.bottom;
+    const yOf = v => padding.top + chartH - ((v - scale.min) / (scale.max - scale.min)) * chartH;
+    const zeroY = yOf(0);
+
+    // Gridlines + y-axis labels
+    ctx.lineWidth = 1;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ticks.forEach((t, i) => {
+      const y = yOf(t);
+      ctx.strokeStyle = gridColor;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(padding.left + chartW, y);
+      ctx.stroke();
+      ctx.fillStyle = textColor;
+      ctx.fillText(tickLabels[i], padding.left - 8, y);
+    });
+
+    // Stronger zero line once the balance has gone negative
+    if (scale.min < 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = textColor;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, zeroY);
+      ctx.lineTo(padding.left + chartW, zeroY);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const n = data.length;
+    const slotW = chartW / n;
+    const barW = Math.min(slotW * 0.5, 48);
+
+    // Bars grow up from zero for positive balances, down for negative ones
+    ctx.fillStyle = barColor;
+    const points = data.map((d, i) => {
+      const cx = padding.left + slotW * i + slotW / 2;
+      const y = yOf(d.total);
+      ctx.fillRect(cx - barW / 2, Math.min(y, zeroY), barW, Math.abs(zeroY - y));
+      return { x: cx, y };
+    });
+
+    // Month labels: thin them out when they'd overlap, always keeping the latest month
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const labelW = Math.max(...data.map(d => ctx.measureText(d.label).width));
+    const every = Math.max(1, Math.ceil((labelW + 10) / slotW));
+    data.forEach((d, i) => {
+      if ((n - 1 - i) % every !== 0) return;
+      const w = ctx.measureText(d.label).width;
+      const x = Math.min(Math.max(points[i].x, w / 2), cssWidth - w / 2);
+      ctx.fillText(d.label, x, padding.top + chartH + 10);
+    });
+
+    // Trend line connecting bar tops
+    ctx.save();
+    if (glow && glow !== 'none') ctx.filter = glow;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.stroke();
+    ctx.restore();
+
+    // Trend line points (hovered one slightly larger)
+    ctx.fillStyle = pointColor;
+    points.forEach((p, i) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, i === hoverIndex ? 5 : 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Month + balance for the hovered month: above the point, or below it when negative
+    if (hoverIndex >= 0 && hoverIndex < n) {
+      const d = data[hoverIndex];
+      const p = points[hoverIndex];
+      const text = d.label + ': ' + money(d.total, 2);
+      ctx.font = '600 11px Arial, sans-serif';
+      const w = ctx.measureText(text).width;
+      const x = Math.min(Math.max(p.x, w / 2 + 2), cssWidth - w / 2 - 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = textColor;
+      if (d.total < 0) {
+        ctx.textBaseline = 'top';
+        ctx.fillText(text, x, p.y + 9);
+      } else {
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(text, x, p.y - 9);
+      }
+    }
+
+    layout = { left: padding.left, chartW, slotW, n };
+  }
+
+  // Hovering (or tapping) anywhere in a month's column selects that month
+  function indexAt(evt) {
+    if (!layout) return -1;
+    const x = evt.clientX - canvas.getBoundingClientRect().left;
+    if (x < layout.left || x > layout.left + layout.chartW) return -1;
+    return Math.min(layout.n - 1, Math.floor((x - layout.left) / layout.slotW));
+  }
+
+  function setHover(i) {
+    if (i === hoverIndex) return;
+    hoverIndex = i;
+    draw();
+  }
+
+  canvas.addEventListener('pointermove', e => setHover(indexAt(e)));
+  canvas.addEventListener('pointerdown', e => setHover(indexAt(e)));
+  // Touch fires pointerleave right after every tap, so only a mouse clears the label
+  canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') setHover(-1); });
+
+  // Redraw on any width change (window resize *and* sidebar collapse) and on theme toggle
+  new ResizeObserver(draw).observe(canvas);
+  new MutationObserver(draw).observe(document.documentElement, {
+    attributes: true, attributeFilter: ['data-theme']
+  });
+
+  draw();
+})();
+</script>
 {% endblock %}
